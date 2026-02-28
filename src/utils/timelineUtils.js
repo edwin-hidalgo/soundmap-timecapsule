@@ -4,139 +4,156 @@
 
 /**
  * detectEras
- * Finds distinct "eras" in listening history based on dominant artist patterns.
- * An era is detected when an artist has >20% share of plays across a 3-month rolling window.
+ * Finds distinct "eras" in listening history using 6-month binning and artist composition clustering.
+ *
+ * Algorithm:
+ * 1. Bin plays into 6-month periods (H1: Jan-Jun, H2: Jul-Dec)
+ * 2. For each period, calculate artist distribution
+ * 3. Detect "shift points" where artist composition significantly changes (Jaccard similarity < 0.4)
+ * 4. Group consecutive periods into eras
  *
  * Returns: Array<{ artist, startDate, endDate, playCount, monthCount }>
- *   startDate, endDate are ISO strings (first day of month and last day of month)
- *   monthCount is the duration in months
+ *   Eras are realistic, multi-period spans (not monthly)
  */
 export function detectEras(allEntries) {
   if (allEntries.length === 0) return []
 
-  // Group by artist and month
-  const artistByMonth = new Map() // "artist||YYYY-MM" -> count
+  // Step 1: Bin plays into 6-month periods (H1/H2)
+  const periodData = new Map() // "YYYY-H1/H2" -> { plays: [], artistCounts: Map }
 
   for (const entry of allEntries) {
     const date = new Date(entry.ts)
-    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const half = month < 6 ? 'H1' : 'H2'
+    const periodKey = `${year}-${half}`
+
+    if (!periodData.has(periodKey)) {
+      periodData.set(periodKey, {
+        plays: [],
+        artistCounts: new Map(),
+      })
+    }
+
+    const period = periodData.get(periodKey)
+    period.plays.push(entry)
+
     const artist = entry.master_metadata_album_artist_name
-
-    const key = `${artist}||${yearMonth}`
-    artistByMonth.set(key, (artistByMonth.get(key) || 0) + 1)
+    period.artistCounts.set(artist, (period.artistCounts.get(artist) || 0) + 1)
   }
 
-  // Get all unique months
-  const allMonths = new Set()
-  for (const key of artistByMonth.keys()) {
-    const [, yearMonth] = key.split('||')
-    allMonths.add(yearMonth)
+  const sortedPeriods = Array.from(periodData.keys()).sort()
+
+  // Step 2: Calculate artist composition for each period
+  const periodVectors = new Map() // periodKey -> { topArtists: [], composition, playCount, dominantArtist }
+
+  for (const periodKey of sortedPeriods) {
+    const period = periodData.get(periodKey)
+
+    // Get top 10 artists
+    const topArtists = Array.from(period.artistCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([artist]) => artist)
+
+    const totalPlays = period.plays.length
+    const [dominantArtist, dominantCount] = Array.from(period.artistCounts.entries()).sort(
+      (a, b) => b[1] - a[1]
+    )[0] || [null, 0]
+
+    periodVectors.set(periodKey, {
+      topArtists,
+      playCount: totalPlays,
+      dominantArtist,
+      dominantPercentage: dominantCount / totalPlays,
+      artistCounts: period.artistCounts,
+    })
   }
-  const sortedMonths = Array.from(allMonths).sort()
 
-  // For each month, find dominant artist
-  const dominantByMonth = new Map() // "YYYY-MM" -> { artist, playCount }
+  // Step 3: Detect shift points using Jaccard similarity
+  const shiftPoints = new Set()
+  shiftPoints.add(0) // Always start with first period
 
-  for (const yearMonth of sortedMonths) {
-    let maxCount = 0
-    let dominantArtist = null
+  for (let i = 0; i < sortedPeriods.length - 1; i++) {
+    const current = periodVectors.get(sortedPeriods[i])
+    const next = periodVectors.get(sortedPeriods[i + 1])
 
-    // Get all artists in this month
-    const artistCounts = new Map()
-    for (const key of artistByMonth.keys()) {
-      if (key.endsWith(yearMonth)) {
-        const [artist, ym] = key.split('||')
-        if (ym === yearMonth) {
-          const count = artistByMonth.get(key)
-          artistCounts.set(artist, count)
-          if (count > maxCount) {
-            maxCount = count
-            dominantArtist = artist
-          }
-        }
+    // Jaccard similarity of top 10 artists
+    const currentSet = new Set(current.topArtists)
+    const nextSet = new Set(next.topArtists)
+    const intersection = new Set([...currentSet].filter((x) => nextSet.has(x)))
+    const union = new Set([...currentSet, ...nextSet])
+    const jaccardSimilarity = union.size > 0 ? intersection.size / union.size : 0
+
+    // Detect significant shift: Jaccard < 0.4 OR dominant artist changes significantly
+    const dominantChanged =
+      current.dominantArtist !== next.dominantArtist && next.dominantPercentage > 0.15
+
+    if (jaccardSimilarity < 0.4 || dominantChanged) {
+      shiftPoints.add(i + 1)
+    }
+  }
+
+  // Step 4: Group periods into eras
+  const eraList = []
+  const shiftPointsArray = Array.from(shiftPoints).sort((a, b) => a - b)
+
+  for (let i = 0; i < shiftPointsArray.length; i++) {
+    const startIdx = shiftPointsArray[i]
+    const endIdx =
+      i + 1 < shiftPointsArray.length ? shiftPointsArray[i + 1] - 1 : sortedPeriods.length - 1
+
+    const periodRange = sortedPeriods.slice(startIdx, endIdx + 1)
+
+    // Skip if era is less than 1 period (6 months)
+    if (periodRange.length < 1) continue
+
+    // Aggregate era data
+    let totalPlayCount = 0
+    const artistScores = new Map()
+
+    for (const periodKey of periodRange) {
+      const period = periodData.get(periodKey)
+      totalPlayCount += period.plays.length
+
+      for (const [artist, count] of period.artistCounts) {
+        artistScores.set(artist, (artistScores.get(artist) || 0) + count)
       }
     }
 
-    // Calculate total plays in this month
-    let totalInMonth = 0
-    for (const count of artistCounts.values()) {
-      totalInMonth += count
-    }
+    // Find dominant artist in era
+    const dominantEntry = Array.from(artistScores.entries()).sort((a, b) => b[1] - a[1])[0]
+    const dominantArtist = dominantEntry?.[0]
+    const dominantPlayCount = dominantEntry?.[1] || 0
 
-    // Only mark as dominant if >20% share
-    if (dominantArtist && totalInMonth > 0 && maxCount / totalInMonth > 0.2) {
-      dominantByMonth.set(yearMonth, { artist: dominantArtist, playCount: maxCount })
-    }
-  }
+    if (dominantArtist) {
+      const startPeriodKey = periodRange[0]
+      const endPeriodKey = periodRange[periodRange.length - 1]
 
-  // Group consecutive months with same dominant artist
-  const eras = []
-  let currentEra = null
+      const [startYear, startHalf] = startPeriodKey.split('-')
+      const [endYear, endHalf] = endPeriodKey.split('-')
 
-  for (const yearMonth of sortedMonths) {
-    const dominant = dominantByMonth.get(yearMonth)
+      const startMonth = startHalf === 'H1' ? 0 : 6
+      const endMonth = endHalf === 'H1' ? 5 : 11
 
-    if (dominant && (!currentEra || currentEra.artist === dominant.artist)) {
-      if (!currentEra) {
-        currentEra = {
-          artist: dominant.artist,
-          startMonth: yearMonth,
-          endMonth: yearMonth,
-          playCount: dominant.playCount,
-        }
-      } else {
-        currentEra.endMonth = yearMonth
-        currentEra.playCount += dominant.playCount
-      }
-    } else {
-      // Era change or gap
-      if (currentEra) {
-        eras.push(currentEra)
-      }
-      if (dominant) {
-        currentEra = {
-          artist: dominant.artist,
-          startMonth: yearMonth,
-          endMonth: yearMonth,
-          playCount: dominant.playCount,
-        }
-      } else {
-        currentEra = null
-      }
+      const startDate = new Date(parseInt(startYear), startMonth, 1)
+      const endDate = new Date(parseInt(endYear), endMonth + 1, 0)
+
+      const monthCount = periodRange.length * 6
+
+      eraList.push({
+        artist: dominantArtist,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        playCount: dominantPlayCount,
+        monthCount,
+        startMonth: `${startYear}-${startHalf}`,
+        endMonth: `${endYear}-${endHalf}`,
+      })
     }
   }
 
-  // Push final era
-  if (currentEra) {
-    eras.push(currentEra)
-  }
-
-  // Convert month strings to date ranges and calculate duration
-  return eras.map((era) => {
-    const [startYear, startMonthStr] = era.startMonth.split('-')
-    const [endYear, endMonthStr] = era.endMonth.split('-')
-    const startMonth = parseInt(startMonthStr) - 1
-    const endMonth = parseInt(endMonthStr) - 1
-
-    // Start: first day of start month
-    const startDate = new Date(parseInt(startYear), startMonth, 1)
-    // End: last day of end month
-    const endDate = new Date(parseInt(endYear), endMonth + 1, 0)
-
-    // Month count: difference between start and end
-    const monthCount =
-      (parseInt(endYear) - parseInt(startYear)) * 12 + (endMonth - startMonth) + 1
-
-    return {
-      artist: era.artist,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      playCount: era.playCount,
-      monthCount,
-      startMonth: era.startMonth,
-      endMonth: era.endMonth,
-    }
-  })
+  return eraList
 }
 
 /**
