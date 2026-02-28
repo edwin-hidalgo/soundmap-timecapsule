@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import TrackRow from './TrackRow.jsx'
 import { formatDuration, formatDateRange } from '../utils/formatters.js'
@@ -11,6 +11,8 @@ import { formatDuration, formatDateRange } from '../utils/formatters.js'
  *   onClose(): void
  */
 export default function CapsulePanel({ country, onClose }) {
+  const [trackTab, setTrackTab] = useState('top') // 'top' | 'dna'
+
   // Escape key listener
   useEffect(() => {
     const handler = (e) => {
@@ -58,11 +60,55 @@ export default function CapsulePanel({ country, onClose }) {
               </div>
             </div>
 
-            {/* Top Tracks */}
-            <h3 className="font-serif text-lg text-text-primary mb-3 mt-6">Top Tracks</h3>
-            {country.topTracks.map((track, i) => (
-              <TrackRow key={track.spotifyTrackUri || i} track={track} rank={i + 1} index={i} />
-            ))}
+            {/* Tracks section with tab toggle */}
+            <div className="mt-6">
+              <div className="flex gap-2 mb-3 border-b border-text-secondary/20">
+                <button
+                  onClick={() => setTrackTab('top')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors relative ${
+                    trackTab === 'top'
+                      ? 'text-text-primary'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Top Plays
+                  {trackTab === 'top' && (
+                    <motion.div
+                      layoutId="tab-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </button>
+                <button
+                  onClick={() => setTrackTab('dna')}
+                  className={`px-3 py-2 text-sm font-medium transition-colors relative ${
+                    trackTab === 'dna'
+                      ? 'text-text-primary'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Trip DNA
+                  {trackTab === 'dna' && (
+                    <motion.div
+                      layoutId="tab-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </button>
+              </div>
+
+              {trackTab === 'top' &&
+                country.topTracks.map((track, i) => (
+                  <TrackRow key={track.spotifyTrackUri || i} track={track} rank={i + 1} index={i} />
+                ))}
+
+              {trackTab === 'dna' &&
+                country.topTracksByConcentration.map((track, i) => (
+                  <TrackRow key={track.spotifyTrackUri || i} track={track} rank={i + 1} index={i} />
+                ))}
+            </div>
 
             {/* Top Artists */}
             {country.topArtists.length > 0 && (

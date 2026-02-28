@@ -30,11 +30,12 @@ import { COUNTRY_DATA } from './countryData.js'
  *     dateStart: string,   // earliest ts
  *     dateEnd: string,     // latest ts
  *     topTracks: TrackStat[],   // top 10, ranked by playCount desc, ms_played tiebreak
+ *     topTracksByConcentration: TrackStat[], // top 10, ranked by concentrationScore desc
  *     topArtists: ArtistStat[], // top 5, ranked by playCount desc
  *   }
  * }
  *
- * TrackStat: { trackName, artistName, albumName, playCount, totalMsPlayed, spotifyTrackUri }
+ * TrackStat: { trackName, artistName, albumName, playCount, totalMsPlayed, spotifyTrackUri, concentrationScore }
  * ArtistStat: { artistName, playCount }
  */
 export function parseStreamingHistory(fileArrays) {
@@ -75,7 +76,20 @@ export function parseStreamingHistory(fileArrays) {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Step 5 + 6: Per-country aggregation, filter to known codes
+  // Step 5: Compute global play counts for concentration scoring
+  // For each track (by URI), count total plays across all countries
+  // ─────────────────────────────────────────────────────────────────────────
+  const globalPlayCount = new Map()
+  for (const [code, entries] of byCountry) {
+    for (const e of entries) {
+      const uri = e.spotify_track_uri
+      if (!globalPlayCount.has(uri)) globalPlayCount.set(uri, 0)
+      globalPlayCount.set(uri, globalPlayCount.get(uri) + 1)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 6 + 7: Per-country aggregation, filter to known codes
   // ─────────────────────────────────────────────────────────────────────────
   const result = {}
 
@@ -126,13 +140,33 @@ export function parseStreamingHistory(fileArrays) {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // 5e + 5f: Sort and slice top 10 tracks
+    // 5d-ii: Add concentration score to each track
+    // concentration = plays_in_this_country / global_plays_of_track
+    // ─────────────────────────────────────────────────────────────────────
+    for (const [uri, stat] of trackMap) {
+      const total = globalPlayCount.get(uri) || 1
+      stat.concentrationScore = stat.playCount / total
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 5e + 5f: Sort and slice top 10 tracks (by play count)
     // Sort by playCount desc, then totalMsPlayed desc for tiebreak
     // ─────────────────────────────────────────────────────────────────────
     const topTracks = Array.from(trackMap.values())
       .sort((a, b) => {
         if (b.playCount !== a.playCount) return b.playCount - a.playCount
         return b.totalMsPlayed - a.totalMsPlayed
+      })
+      .slice(0, 10)
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 5e-ii: Top 10 tracks by concentration (Trip DNA)
+    // Sort by concentrationScore desc, then playCount desc for tiebreak
+    // ─────────────────────────────────────────────────────────────────────
+    const topTracksByConcentration = Array.from(trackMap.values())
+      .sort((a, b) => {
+        if (b.concentrationScore !== a.concentrationScore) return b.concentrationScore - a.concentrationScore
+        return b.playCount - a.playCount
       })
       .slice(0, 10)
 
@@ -167,6 +201,7 @@ export function parseStreamingHistory(fileArrays) {
       dateStart,
       dateEnd,
       topTracks,
+      topTracksByConcentration,
       topArtists,
     }
   }

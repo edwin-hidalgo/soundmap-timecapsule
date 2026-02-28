@@ -7,8 +7,10 @@ import { formatListeningHours, formatDateRange } from '../utils/formatters.js'
  * Props:
  *   countryData: Object — keyed by country code
  *   onReset: function — called by "← Back" button
+ *   onNavigateToTimeline: function — navigate to Timeline view
+ *   onNavigateToActivity: function — navigate to Activity Calendar view
  */
-export default function StatsBar({ countryData, onReset }) {
+export default function StatsBar({ countryData, onReset, onNavigateToTimeline, onNavigateToActivity }) {
   const countries = Object.values(countryData)
   const totalCountries = countries.length
   const totalPlays = countries.reduce((sum, c) => sum + c.trackCount, 0)
@@ -30,6 +32,22 @@ export default function StatsBar({ countryData, onReset }) {
         className="text-text-secondary hover:text-text-primary transition-colors text-sm"
       >
         ← Back
+      </button>
+
+      <div className="w-px h-4 bg-text-secondary/30" />
+
+      <button
+        onClick={onNavigateToTimeline}
+        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+      >
+        Timeline
+      </button>
+
+      <button
+        onClick={onNavigateToActivity}
+        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+      >
+        Activity
       </button>
 
       <div className="w-px h-4 bg-text-secondary/30" />

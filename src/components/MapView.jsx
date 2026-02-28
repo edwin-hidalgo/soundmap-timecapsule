@@ -4,6 +4,7 @@ import Map, { Marker } from 'react-map-gl'
 import CountryMarker from './CountryMarker.jsx'
 import CapsulePanel from './CapsulePanel.jsx'
 import StatsBar from './StatsBar.jsx'
+import SpotifyConnectButton from './SpotifyConnectButton.jsx'
 import { markerSize } from '../utils/formatters.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -14,8 +15,23 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
  * Props:
  *   countryData: Object  — keyed by ISO code, value is aggregated country stats
  *   onReset()            — returns to upload screen
+ *   onNavigateToTimeline() — navigate to Timeline view
+ *   onNavigateToActivity() — navigate to Activity Calendar view
+ *   spotifyToken: Object — OAuth token { accessToken, refreshToken, expiresAt }
+ *   spotifyClientId: String — Spotify OAuth client ID
+ *   spotifyRedirectUri: String — Spotify OAuth redirect URI
+ *   onLogoutSpotify() — logout from Spotify
  */
-export default function MapView({ countryData, onReset }) {
+export default function MapView({
+  countryData,
+  onReset,
+  onNavigateToTimeline,
+  onNavigateToActivity,
+  spotifyToken,
+  spotifyClientId,
+  spotifyRedirectUri,
+  onLogoutSpotify,
+}) {
   const mapRef = useRef(null)
   const [selectedCountry, setSelectedCountry] = useState(null)
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -81,7 +97,20 @@ export default function MapView({ countryData, onReset }) {
         ))}
       </Map>
 
-      <StatsBar countryData={countryData} onReset={onReset} />
+      <StatsBar
+        countryData={countryData}
+        onReset={onReset}
+        onNavigateToTimeline={onNavigateToTimeline}
+        onNavigateToActivity={onNavigateToActivity}
+      />
+
+      <SpotifyConnectButton
+        clientId={spotifyClientId}
+        redirectUri={spotifyRedirectUri}
+        isConnected={!!spotifyToken}
+        onDisconnect={onLogoutSpotify}
+      />
+
       <CapsulePanel country={selectedCountry} onClose={handleClose} />
     </motion.div>
   )

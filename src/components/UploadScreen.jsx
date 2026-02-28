@@ -66,6 +66,9 @@ export default function UploadScreen({ onDataReady }) {
         throw new Error('No Spotify streaming history found in these files')
       }
 
+      // Flatten arrays to get all raw entries
+      const allRawEntries = arrays.flat()
+
       // Parse with data layer
       const result = parseStreamingHistory(arrays)
 
@@ -76,7 +79,8 @@ export default function UploadScreen({ onDataReady }) {
       }
 
       // Success: call parent callback, App.jsx will trigger screen transition
-      onDataReady(result)
+      // Pass both processed countryData and raw entries for timeline features
+      onDataReady(result, allRawEntries)
     } catch (err) {
       setError(err.message)
       setStatus('error')
@@ -115,7 +119,9 @@ export default function UploadScreen({ onDataReady }) {
   // Demo Handler
   // ───────────────────────────────────────────────────────────────────────────
   function handleDemo() {
-    onDataReady(demoData)
+    // For demo, we don't have raw entries. Pass empty array for now.
+    // Timeline features will show demo notice if entries are empty.
+    onDataReady(demoData, [])
   }
 
   // ───────────────────────────────────────────────────────────────────────────
