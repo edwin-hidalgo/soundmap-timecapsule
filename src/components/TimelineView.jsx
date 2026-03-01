@@ -119,8 +119,8 @@ export default function TimelineView({ allEntries, onBack }) {
           </button>
         </div>
 
-        {/* Time Window Selector */}
-        {allEntries.length > 0 && (
+        {/* Time Window Selector — only show on tabs that respond to window changes */}
+        {allEntries.length > 0 && (tab === 'eras' || tab === 'passport') && (
           <div className="flex gap-2 flex-wrap">
             {windowOptions.map((option) => (
               <button
@@ -442,16 +442,19 @@ export default function TimelineView({ allEntries, onBack }) {
             <div>
               <h2 className="font-serif text-2xl text-text-primary mb-2">Life Staples</h2>
               <p className="text-text-secondary text-sm">
-                Your 200+ play tracks, classified by how actively you're listening now
+                The songs you keep coming back to — tracks woven into your listening identity
               </p>
             </div>
 
             {/* Current Staples */}
             {lifeStaples.current.length > 0 && (
               <div>
-                <h3 className="font-serif text-lg text-text-primary mb-4">
-                  Current Staples ({lifeStaples.current.length})
-                </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-serif text-lg text-text-primary">
+                    Current Staples ({lifeStaples.current.length})
+                  </h3>
+                  <span className="text-xs text-text-secondary/60">Still in rotation</span>
+                </div>
                 <div className="space-y-2">
                   {lifeStaples.current.slice(0, 10).map((track, i) => (
                     <motion.div
@@ -485,9 +488,12 @@ export default function TimelineView({ allEntries, onBack }) {
             {/* Dormant Staples */}
             {lifeStaples.dormant.length > 0 && (
               <div>
-                <h3 className="font-serif text-lg text-text-primary mb-4">
-                  Dormant ({lifeStaples.dormant.length})
-                </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-serif text-lg text-text-primary">
+                    Dormant ({lifeStaples.dormant.length})
+                  </h3>
+                  <span className="text-xs text-text-secondary/60">Faded but not forgotten</span>
+                </div>
                 <div className="space-y-2">
                   {lifeStaples.dormant.slice(0, 8).map((track, i) => (
                     <motion.div
@@ -521,9 +527,12 @@ export default function TimelineView({ allEntries, onBack }) {
             {/* Archived Staples */}
             {lifeStaples.archived.length > 0 && (
               <div>
-                <h3 className="font-serif text-lg text-text-primary mb-4">
-                  Archived ({lifeStaples.archived.length})
-                </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-serif text-lg text-text-primary">
+                    Archived ({lifeStaples.archived.length})
+                  </h3>
+                  <span className="text-xs text-text-secondary/60">Haven't heard these in years</span>
+                </div>
                 <div className="space-y-2">
                   {lifeStaples.archived.slice(0, 8).map((track, i) => (
                     <motion.div
@@ -599,6 +608,32 @@ export default function TimelineView({ allEntries, onBack }) {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* All archetypes context */}
+              <div className="mt-6 pt-4 border-t border-accent/20">
+                <p className="text-text-secondary text-xs uppercase tracking-wide font-medium mb-3">
+                  Your archetype
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Explorer-Curator',
+                    'Focused Loyalist',
+                    'Loyalist-Curator',
+                    'Balanced Listener',
+                  ].map((a) => (
+                    <span
+                      key={a}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                        a === tastePassport.archetype
+                          ? 'bg-accent/20 text-accent border-accent/40'
+                          : 'bg-white/5 text-text-secondary/40 border-white/10'
+                      }`}
+                    >
+                      {a}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
