@@ -110,18 +110,18 @@ export default function TimelineView({ allEntries, onBack }) {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-gradient-to-b from-bg-primary to-transparent backdrop-blur-sm border-b border-white/5 px-6 py-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="font-serif text-3xl text-text-primary">Your Timeline</h1>
           <button
             onClick={onBack}
             className="text-text-secondary hover:text-text-primary transition-colors text-sm"
           >
             ← Back
           </button>
+          <h1 className="font-serif text-3xl text-text-primary">Your Timeline</h1>
         </div>
 
         {/* Time Window Selector — only show on tabs that respond to window changes */}
         {allEntries.length > 0 && (tab === 'eras' || tab === 'passport') && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap justify-end">
             {windowOptions.map((option) => (
               <button
                 key={option.days}

@@ -99,6 +99,13 @@ export default function CapsulePanel({ country, onClose }) {
                 </button>
               </div>
 
+              {/* Context line for active tab */}
+              <p className="text-text-secondary/60 text-xs mb-3 mt-1">
+                {trackTab === 'top'
+                  ? 'Your most-played tracks in this country'
+                  : 'Songs you played almost exclusively here — rarely anywhere else'}
+              </p>
+
               {trackTab === 'top' &&
                 country.topTracks.map((track, i) => (
                   <TrackRow key={track.spotifyTrackUri || i} track={track} rank={i + 1} index={i} />

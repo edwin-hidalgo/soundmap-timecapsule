@@ -62,13 +62,13 @@ export default function ActivityCalendar({ allEntries, onBack }) {
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="font-serif text-3xl text-text-primary">Your Listening Activity</h1>
             <button
               onClick={onBack}
               className="text-text-secondary hover:text-text-primary transition-colors text-sm"
             >
               ← Back
             </button>
+            <h1 className="font-serif text-3xl text-text-primary">Your Listening Activity</h1>
           </div>
           <p className="text-text-secondary text-center py-8">No activity data to display.</p>
         </div>
@@ -146,18 +146,18 @@ export default function ActivityCalendar({ allEntries, onBack }) {
       <div className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-serif text-3xl text-text-primary mb-2">Your Listening Activity</h1>
-            <p className="text-text-secondary text-sm">
-              {dateRange.start.getFullYear()} — {dayData.size} days of listening
-            </p>
-          </div>
           <button
             onClick={onBack}
             className="text-text-secondary hover:text-text-primary transition-colors text-sm"
           >
             ← Back
           </button>
+          <div className="text-right">
+            <h1 className="font-serif text-3xl text-text-primary mb-2">Your Listening Activity</h1>
+            <p className="text-text-secondary text-sm">
+              {dateRange.start.getFullYear()} — {dayData.size} days of listening
+            </p>
+          </div>
         </div>
 
         {/* Legend */}
