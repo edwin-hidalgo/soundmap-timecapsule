@@ -446,15 +446,15 @@ export default function TimelineView({ allEntries, onBack }) {
               </p>
             </div>
 
-            {/* Current Staples */}
-            {lifeStaples.current.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="font-serif text-lg text-text-primary">
-                    In Your Rotation ({lifeStaples.current.length})
-                  </h3>
-                  <span className="text-xs text-text-secondary/60">Still actively listening</span>
-                </div>
+            {/* In Your Rotation */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="font-serif text-lg text-text-primary">
+                  In Your Rotation ({lifeStaples.current.length})
+                </h3>
+                <span className="text-xs text-text-secondary/60">Still actively listening</span>
+              </div>
+              {lifeStaples.current.length > 0 ? (
                 <div className="space-y-2">
                   {lifeStaples.current.slice(0, 10).map((track, i) => (
                     <motion.div
@@ -482,18 +482,20 @@ export default function TimelineView({ allEntries, onBack }) {
                     </motion.div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-text-secondary text-sm text-center py-6">No songs detected in this category yet</p>
+              )}
+            </div>
 
-            {/* Dormant Staples */}
-            {lifeStaples.dormant.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="font-serif text-lg text-text-primary">
-                    Taking a Break ({lifeStaples.dormant.length})
-                  </h3>
-                  <span className="text-xs text-text-secondary/60">Loved these, haven't returned lately</span>
-                </div>
+            {/* Taking a Break */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="font-serif text-lg text-text-primary">
+                  Taking a Break ({lifeStaples.dormant.length})
+                </h3>
+                <span className="text-xs text-text-secondary/60">Loved these, haven't returned lately</span>
+              </div>
+              {lifeStaples.dormant.length > 0 ? (
                 <div className="space-y-2">
                   {lifeStaples.dormant.slice(0, 8).map((track, i) => (
                     <motion.div
@@ -521,18 +523,20 @@ export default function TimelineView({ allEntries, onBack }) {
                     </motion.div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-text-secondary text-sm text-center py-6 opacity-75">No songs detected in this category yet</p>
+              )}
+            </div>
 
-            {/* Archived Staples */}
-            {lifeStaples.archived.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="font-serif text-lg text-text-primary">
-                    Former Obsessions ({lifeStaples.archived.length})
-                  </h3>
-                  <span className="text-xs text-text-secondary/60">Defined an era, then faded</span>
-                </div>
+            {/* Former Obsessions */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="font-serif text-lg text-text-primary">
+                  Former Obsessions ({lifeStaples.archived.length})
+                </h3>
+                <span className="text-xs text-text-secondary/60">Defined an era, then faded</span>
+              </div>
+              {lifeStaples.archived.length > 0 ? (
                 <div className="space-y-2">
                   {lifeStaples.archived.slice(0, 8).map((track, i) => (
                     <motion.div
@@ -560,16 +564,10 @@ export default function TimelineView({ allEntries, onBack }) {
                     </motion.div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {lifeStaples.current.length === 0 &&
-              lifeStaples.dormant.length === 0 &&
-              lifeStaples.archived.length === 0 && (
-                <p className="text-text-secondary text-center py-8">
-                  No life staples (200+ plays) found in your history yet.
-                </p>
+              ) : (
+                <p className="text-text-secondary text-sm text-center py-6 opacity-60">No songs detected in this category yet</p>
               )}
+            </div>
           </div>
         )}
 
