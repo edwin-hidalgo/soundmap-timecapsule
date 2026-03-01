@@ -177,7 +177,7 @@ export default function UploadScreen({ onDataReady }) {
         {/* Title & Subtitle */}
         <div className="text-center">
           <h1 className="text-5xl font-serif text-text-primary mb-2">
-            Music Time Capsule
+            My Music Memory
           </h1>
           <p className="text-lg text-text-secondary font-sans">
             Explore your historic music taste
