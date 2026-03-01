@@ -575,75 +575,85 @@ export default function TimelineView({ allEntries, onBack }) {
         {allEntries.length > 0 && tab === 'passport' && (
           <div className="space-y-6">
             <div className="p-6 rounded-lg bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/30">
-              <h2 className="font-serif text-3xl text-text-primary mb-1">
-                {tastePassport.archetype}
-              </h2>
-              <p className="text-text-secondary text-sm mb-6">{tastePassport.narrative}</p>
+              {tastePassport.archetype === 'New Listener' ? (
+                <h2 className="font-serif text-3xl text-text-primary mb-6">
+                  Not Enough Data
+                </h2>
+              ) : (
+                <>
+                  <h2 className="font-serif text-3xl text-text-primary mb-1">
+                    {tastePassport.archetype}
+                  </h2>
+                  <p className="text-text-secondary text-sm mb-6">{tastePassport.narrative}</p>
 
-              {/* 5 dimension scores */}
-              <div className="space-y-4">
-                {[
-                  { label: 'Explorer / Replayer', score: tastePassport.explorerScore },
-                  { label: 'Loyalist / Drifter', score: tastePassport.loyalistScore },
-                  { label: 'Night Owl / Day Listener', score: tastePassport.dayNightScore },
-                  { label: 'Deep / Broad', score: tastePassport.depthScore },
-                  { label: 'Taste Volatility', score: tastePassport.volatilityScore },
-                ].map((dimension, i) => (
-                  <div key={i}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-text-secondary text-sm font-medium">{dimension.label}</p>
-                      <p className="font-mono-stat text-accent text-sm">
-                        {Math.round(dimension.score * 100)}%
-                      </p>
-                    </div>
-                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dimension.score * 100}%` }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }}
-                        className="h-full bg-gradient-to-r from-accent to-accent/60 rounded-full"
-                      />
-                    </div>
+                  {/* 5 dimension scores */}
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Explorer / Replayer', score: tastePassport.explorerScore },
+                      { label: 'Loyalist / Drifter', score: tastePassport.loyalistScore },
+                      { label: 'Night Owl / Day Listener', score: tastePassport.dayNightScore },
+                      { label: 'Deep / Broad', score: tastePassport.depthScore },
+                      { label: 'Taste Volatility', score: tastePassport.volatilityScore },
+                    ].map((dimension, i) => (
+                      <div key={i}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-text-secondary text-sm font-medium">{dimension.label}</p>
+                          <p className="font-mono-stat text-accent text-sm">
+                            {Math.round(dimension.score * 100)}%
+                          </p>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${dimension.score * 100}%` }}
+                            transition={{ duration: 0.6, ease: 'easeOut' }}
+                            className="h-full bg-gradient-to-r from-accent to-accent/60 rounded-full"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
 
-              {/* Archetype context — conditional rendering based on data sufficiency */}
-              <div className="mt-6 pt-4 border-t border-accent/20">
-                {tastePassport.archetype === 'New Listener' ? (
-                  <p className="text-text-secondary text-sm">
-                    Not enough data in this time period to determine your listener type.
-                    Try selecting a longer time window to see your archetype.
+              {/* Archetype comparison — only show when data is sufficient */}
+              {tastePassport.archetype !== 'New Listener' && (
+                <div className="mt-6 pt-4 border-t border-accent/20">
+                  <p className="text-text-secondary text-sm mb-3">
+                    You are a{' '}
+                    <span className="text-accent font-medium">{tastePassport.archetype}</span>.{' '}
+                    Here's how you compare to other listener types:
                   </p>
-                ) : (
-                  <>
-                    <p className="text-text-secondary text-sm mb-3">
-                      You are a{' '}
-                      <span className="text-accent font-medium">{tastePassport.archetype}</span>.{' '}
-                      Here's how you compare to other listener types:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        'Explorer-Curator',
-                        'Focused Loyalist',
-                        'Loyalist-Curator',
-                        'Balanced Listener',
-                      ].map((a) => (
-                        <span
-                          key={a}
-                          className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                            a === tastePassport.archetype
-                              ? 'bg-accent/20 text-accent border-accent/40'
-                              : 'bg-white/5 text-text-secondary/40 border-white/10'
-                          }`}
-                        >
-                          {a}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      'Explorer-Curator',
+                      'Focused Loyalist',
+                      'Loyalist-Curator',
+                      'Balanced Listener',
+                    ].map((a) => (
+                      <span
+                        key={a}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                          a === tastePassport.archetype
+                            ? 'bg-accent/20 text-accent border-accent/40'
+                            : 'bg-white/5 text-text-secondary/40 border-white/10'
+                        }`}
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Insufficient data message */}
+              {tastePassport.archetype === 'New Listener' && (
+                <div className="mt-6 pt-4 border-t border-accent/20">
+                  <p className="text-text-secondary text-sm">
+                    Select a longer time window to see your listener profile and archetype.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
