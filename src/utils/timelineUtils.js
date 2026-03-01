@@ -670,7 +670,14 @@ export function classifyLifeStaples(allEntries) {
   // Build track stats: all-time and last-12-months
   const trackStats = new Map() // uri -> { trackName, artistName, totalPlays, recentPlays, lastHeard }
 
-  const last12MoCutoff = new Date()
+  // Compute data-relative anchor: most recent entry in allEntries
+  let dataEndDate = new Date(0)
+  for (const entry of allEntries) {
+    const d = new Date(entry.ts)
+    if (d > dataEndDate) dataEndDate = d
+  }
+
+  const last12MoCutoff = new Date(dataEndDate)
   last12MoCutoff.setFullYear(last12MoCutoff.getFullYear() - 1)
 
   for (const entry of allEntries) {
@@ -704,13 +711,12 @@ export function classifyLifeStaples(allEntries) {
   const current = []
   const dormant = []
   const archived = []
-  const now = new Date()
 
   for (const [uri, stat] of trackStats) {
     if (stat.totalPlays < stapleThreshold) continue
 
-    // Days since last heard
-    const daysSinceLastHeard = Math.floor((now - stat.lastHeard) / (1000 * 60 * 60 * 24))
+    // Days since last heard (relative to data end date, not today)
+    const daysSinceLastHeard = Math.floor((dataEndDate - stat.lastHeard) / (1000 * 60 * 60 * 24))
 
     if (stat.recentPlays >= 10 && daysSinceLastHeard <= 180) {
       // Current: 10+ plays in last 12 months AND heard within 6 months

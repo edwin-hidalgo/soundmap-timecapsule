@@ -442,7 +442,7 @@ export default function TimelineView({ allEntries, onBack }) {
             <div>
               <h2 className="font-serif text-2xl text-text-primary mb-2">Life Staples</h2>
               <p className="text-text-secondary text-sm">
-                The songs you keep coming back to — tracks woven into your listening identity
+                Your most-played tracks of all time — where they stand in your listening history
               </p>
             </div>
 
@@ -451,9 +451,9 @@ export default function TimelineView({ allEntries, onBack }) {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <h3 className="font-serif text-lg text-text-primary">
-                    Current Staples ({lifeStaples.current.length})
+                    In Your Rotation ({lifeStaples.current.length})
                   </h3>
-                  <span className="text-xs text-text-secondary/60">Still in rotation</span>
+                  <span className="text-xs text-text-secondary/60">Still actively listening</span>
                 </div>
                 <div className="space-y-2">
                   {lifeStaples.current.slice(0, 10).map((track, i) => (
@@ -490,9 +490,9 @@ export default function TimelineView({ allEntries, onBack }) {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <h3 className="font-serif text-lg text-text-primary">
-                    Dormant ({lifeStaples.dormant.length})
+                    Taking a Break ({lifeStaples.dormant.length})
                   </h3>
-                  <span className="text-xs text-text-secondary/60">Faded but not forgotten</span>
+                  <span className="text-xs text-text-secondary/60">Loved these, haven't returned lately</span>
                 </div>
                 <div className="space-y-2">
                   {lifeStaples.dormant.slice(0, 8).map((track, i) => (
@@ -529,9 +529,9 @@ export default function TimelineView({ allEntries, onBack }) {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <h3 className="font-serif text-lg text-text-primary">
-                    Archived ({lifeStaples.archived.length})
+                    Former Obsessions ({lifeStaples.archived.length})
                   </h3>
-                  <span className="text-xs text-text-secondary/60">Haven't heard these in years</span>
+                  <span className="text-xs text-text-secondary/60">Defined an era, then faded</span>
                 </div>
                 <div className="space-y-2">
                   {lifeStaples.archived.slice(0, 8).map((track, i) => (
