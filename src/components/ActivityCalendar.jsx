@@ -174,116 +174,118 @@ export default function ActivityCalendar({ allEntries, onBack }) {
         </div>
 
         {/* Calendar Grid */}
-        <div className="overflow-x-auto pb-4">
-          <div className="inline-block">
-            {/* Month header row */}
-            <div className="flex mb-1">
-              <div className="w-8" /> {/* space for day labels */}
-              {monthHeaders.map((header, i) => (
-                <div
-                  key={i}
-                  className="text-xs text-text-secondary font-medium"
-                  style={{
-                    width: `${(header.offset + 1) * 14}px`,
-                    paddingLeft: `${header.offset * 14}px`,
-                  }}
-                >
-                  {header.month}
-                </div>
-              ))}
-            </div>
-
-            {/* Day labels + grid */}
-            <div className="flex gap-1">
-              {/* Day name column */}
-              <div className="flex flex-col gap-1">
-                {dayNames.map((day, i) => (
+        <div className="relative">
+          <div className="overflow-x-auto pb-4">
+            <div className="inline-block">
+              {/* Month header row */}
+              <div className="flex mb-1">
+                <div className="w-8" /> {/* space for day labels */}
+                {monthHeaders.map((header, i) => (
                   <div
-                    key={day}
-                    className="w-8 h-3 flex items-center justify-center text-xs text-text-secondary font-medium"
+                    key={i}
+                    className="text-xs text-text-secondary font-medium"
+                    style={{
+                      width: `${(header.offset + 1) * 14}px`,
+                      paddingLeft: `${header.offset * 14}px`,
+                    }}
                   >
-                    {day.slice(0, 1)}
+                    {header.month}
                   </div>
                 ))}
               </div>
 
-              {/* Weeks grid */}
+              {/* Day labels + grid */}
               <div className="flex gap-1">
-                {weeks.map((week, weekIndex) => (
-                  <div key={weekIndex} className="flex flex-col gap-1">
-                    {week.map((date, dayIndex) => {
-                      const dateStr = date.toISOString().split('T')[0]
-                      const day = dayData.get(dateStr)
-                      const isHovered = hoveredDate === dateStr
+                {/* Day name column */}
+                <div className="flex flex-col gap-1">
+                  {dayNames.map((day, i) => (
+                    <div
+                      key={day}
+                      className="w-8 h-3 flex items-center justify-center text-xs text-text-secondary font-medium"
+                    >
+                      {day.slice(0, 1)}
+                    </div>
+                  ))}
+                </div>
 
-                      return (
-                        <motion.div
-                          key={dateStr}
-                          className={`w-3 h-3 rounded-xs cursor-pointer transition-all relative ${getColorClass(
-                            dateStr
-                          )} ${isHovered ? 'ring-2 ring-accent' : ''}`}
-                          onMouseEnter={(e) => {
-                            setHoveredDate(dateStr)
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            setTooltipPos({
-                              top: rect.top - 60,
-                              left: rect.left - 50,
-                            })
-                          }}
-                          onMouseLeave={() => {
-                            setHoveredDate(null)
-                            setTooltipPos(null)
-                          }}
-                          whileHover={{ scale: 1.3 }}
-                        />
-                      )
-                    })}
-                  </div>
-                ))}
+                {/* Weeks grid */}
+                <div className="flex gap-1">
+                  {weeks.map((week, weekIndex) => (
+                    <div key={weekIndex} className="flex flex-col gap-1">
+                      {week.map((date, dayIndex) => {
+                        const dateStr = date.toISOString().split('T')[0]
+                        const day = dayData.get(dateStr)
+                        const isHovered = hoveredDate === dateStr
+
+                        return (
+                          <motion.div
+                            key={dateStr}
+                            className={`w-3 h-3 rounded-xs cursor-pointer transition-all relative ${getColorClass(
+                              dateStr
+                            )} ${isHovered ? 'ring-2 ring-accent' : ''}`}
+                            onMouseEnter={(e) => {
+                              setHoveredDate(dateStr)
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              setTooltipPos({
+                                top: rect.top - 60,
+                                left: rect.left - 50,
+                              })
+                            }}
+                            onMouseLeave={() => {
+                              setHoveredDate(null)
+                              setTooltipPos(null)
+                            }}
+                            whileHover={{ scale: 1.3 }}
+                          />
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Tooltip - positioned relative to the calendar container */}
+          {hoveredDate && dayData.has(hoveredDate) && tooltipPos && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="fixed z-50 p-3 rounded-lg bg-white/10 backdrop-blur border border-accent/50 min-w-56 pointer-events-none"
+              style={{
+                top: `${tooltipPos.top}px`,
+                left: `${tooltipPos.left}px`,
+              }}
+            >
+              <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
+                {new Date(hoveredDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+              <p className="font-mono-stat text-accent text-sm mb-3">
+                {formatDuration(dayData.get(hoveredDate).msPlayed)}
+              </p>
+
+              {dayData.get(hoveredDate).tracks.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
+                  {dayData.get(hoveredDate).tracks.map((track, i) => (
+                    <div key={i} className="text-text-primary text-xs">
+                      <p className="font-medium truncate">{track.name}</p>
+                      <p className="text-text-secondary text-xs truncate">{track.artist}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-text-secondary text-xs">No tracks recorded</p>
+              )}
+            </motion.div>
+          )}
         </div>
-
-        {/* Tooltip */}
-        {hoveredDate && dayData.has(hoveredDate) && tooltipPos && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed z-50 p-3 rounded-lg bg-white/10 backdrop-blur border border-accent/50 min-w-56"
-            style={{
-              top: `${tooltipPos.top}px`,
-              left: `${tooltipPos.left}px`,
-            }}
-          >
-            <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
-              {new Date(hoveredDate).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-            <p className="font-mono-stat text-accent text-sm mb-3">
-              {formatDuration(dayData.get(hoveredDate).msPlayed)}
-            </p>
-
-            {dayData.get(hoveredDate).tracks.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
-                {dayData.get(hoveredDate).tracks.map((track, i) => (
-                  <div key={i} className="text-text-primary text-xs">
-                    <p className="font-medium truncate">{track.name}</p>
-                    <p className="text-text-secondary text-xs truncate">{track.artist}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-text-secondary text-xs">No tracks recorded</p>
-            )}
-          </motion.div>
-        )}
       </div>
     </motion.div>
   )

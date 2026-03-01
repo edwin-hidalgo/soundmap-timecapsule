@@ -9,22 +9,48 @@
 
 /* 4. Design tokens — @theme generates utility classes (bg-bg-primary, text-accent, etc.) */
 @theme {
-  --color-bg-primary:       #0D1117;
-  --color-bg-secondary:     #161B22;
-  --color-text-primary:     #E6EDF3;
-  --color-text-secondary:   #8B949E;
-  --color-accent:           #F5A623;
-  --color-accent-secondary: #D4860B;
+  /* Backgrounds — warm dark palette */
+  --color-bg-primary:       #1A1815;
+  --color-bg-secondary:     #242218;
+  --color-surface:          #2D2823;
+  --color-surface-hover:    #363129;
 
+  /* Text hierarchy */
+  --color-text-primary:     #F5F0EB;
+  --color-text-secondary:   #B5A89A;
+  --color-text-muted:       #8F8679;
+
+  /* Accent — forest green */
+  --color-accent:           #3D7850;
+  --color-accent-secondary: #2F5F40;
+  --color-accent-light:     #5A9668;
+
+  /* Borders */
+  --color-border:           #3A342F;
+  --color-border-strong:    #4A423D;
+
+  /* Status */
+  --color-error:            #D97563;
+  --color-error-surface:    rgba(217, 117, 99, 0.1);
+
+  /* Fonts */
   --font-family-serif: "Instrument Serif", Georgia, serif;
   --font-family-sans:  "DM Sans", system-ui, sans-serif;
   --font-family-mono:  "JetBrains Mono", "Fira Code", monospace;
+
+  /* Radius scale */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
 }
 
 /* 5. CSS vars for rgba values (can't go in @theme) */
 :root {
-  --bg-glass:    rgba(22, 27, 34, 0.85);
-  --accent-glow: rgba(245, 166, 35, 0.3);
+  --bg-glass:    rgba(36, 34, 24, 0.85);
+  --accent-glow: rgba(61, 120, 80, 0.25);
+  --surface-dim: rgba(45, 40, 35, 0.6);
 }
 
 /* 6. Base reset */
@@ -32,8 +58,8 @@
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root { height: 100%; margin: 0; padding: 0; }
   body {
-    background-color: #0D1117;
-    color: #E6EDF3;
+    background-color: rgb(26, 24, 21);
+    color: rgb(245, 240, 235);
     font-family: "DM Sans", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -43,27 +69,60 @@
 
 /* 7. Component utilities */
 @layer components {
+  /* Surfaces */
   .glass-panel {
     background: var(--bg-glass);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(230, 237, 243, 0.08);
+    border: 1px solid var(--color-border);
   }
+
+  .surface-card {
+    @apply bg-surface border border-border rounded-md;
+  }
+
+  .surface-card-hover {
+    @apply hover:bg-surface-hover transition-colors;
+  }
+
+  /* Accent styling */
   .accent-glow {
     box-shadow: 0 0 20px var(--accent-glow);
   }
+
+  /* Typography */
   .font-mono-stat {
     font-family: "JetBrains Mono", monospace;
     font-variant-numeric: tabular-nums;
   }
+
+  .label-overline {
+    @apply text-text-secondary text-xs uppercase tracking-widest font-medium;
+  }
+
+  /* Tags & Badges */
+  .tag-accent {
+    @apply px-3 py-1 bg-accent/20 text-accent-light text-xs rounded-full border border-accent/30;
+  }
+
+  /* Buttons */
+  .btn-accent {
+    @apply px-4 py-2 bg-accent hover:bg-accent-secondary text-bg-primary font-medium rounded-md transition-colors;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 border border-border hover:bg-surface text-text-primary rounded-md transition-colors;
+  }
+
+  /* Pixelated halftone grain overlay — dense dots, editorial aesthetic */
   .grain-overlay::before {
     content: '';
     position: fixed;
     inset: 0;
     pointer-events: none;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 200px;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='4' height='4' fill='%23ffffff'/%3E%3Crect x='8' y='4' width='4' height='4' fill='%23ffffff'/%3E%3Crect x='0' y='8' width='4' height='4' fill='%23ffffff'/%3E%3Crect x='8' y='12' width='4' height='4' fill='%23ffffff'/%3E%3C/svg%3E");
+    background-size: 16px 16px;
     z-index: 0;
   }
 }
