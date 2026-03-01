@@ -608,30 +608,41 @@ export default function TimelineView({ allEntries, onBack }) {
                 ))}
               </div>
 
-              {/* All archetypes context */}
+              {/* Archetype context — conditional rendering based on data sufficiency */}
               <div className="mt-6 pt-4 border-t border-accent/20">
-                <p className="text-text-secondary text-xs uppercase tracking-wide font-medium mb-3">
-                  Your archetype
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    'Explorer-Curator',
-                    'Focused Loyalist',
-                    'Loyalist-Curator',
-                    'Balanced Listener',
-                  ].map((a) => (
-                    <span
-                      key={a}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                        a === tastePassport.archetype
-                          ? 'bg-accent/20 text-accent border-accent/40'
-                          : 'bg-white/5 text-text-secondary/40 border-white/10'
-                      }`}
-                    >
-                      {a}
-                    </span>
-                  ))}
-                </div>
+                {tastePassport.archetype === 'New Listener' ? (
+                  <p className="text-text-secondary text-sm">
+                    Not enough data in this time period to determine your listener type.
+                    Try selecting a longer time window to see your archetype.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-text-secondary text-sm mb-3">
+                      You are a{' '}
+                      <span className="text-accent font-medium">{tastePassport.archetype}</span>.{' '}
+                      Here's how you compare to other listener types:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'Explorer-Curator',
+                        'Focused Loyalist',
+                        'Loyalist-Curator',
+                        'Balanced Listener',
+                      ].map((a) => (
+                        <span
+                          key={a}
+                          className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                            a === tastePassport.archetype
+                              ? 'bg-accent/20 text-accent border-accent/40'
+                              : 'bg-white/5 text-text-secondary/40 border-white/10'
+                          }`}
+                        >
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

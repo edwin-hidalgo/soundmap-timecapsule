@@ -180,7 +180,7 @@ export default function UploadScreen({ onDataReady }) {
             Music Time Capsule
           </h1>
           <p className="text-lg text-text-secondary font-sans">
-            Explore your music taste
+            Explore your historic music taste
           </p>
         </div>
 
@@ -208,7 +208,7 @@ export default function UploadScreen({ onDataReady }) {
               <p className="text-2xl">↑</p>
               <div className="text-center">
                 <p className="text-text-primary font-sans">
-                  Drop your Spotify JSON files
+                  Drop your Spotify Extended Streaming History files
                 </p>
                 <p className="text-sm text-text-secondary">or click to browse</p>
               </div>
@@ -303,7 +303,7 @@ export default function UploadScreen({ onDataReady }) {
               className="flex items-center gap-2 text-text-secondary/70 hover:text-text-secondary transition-colors text-sm"
             >
               <span className="text-xs">{showInfo ? '▾' : '▸'}</span>
-              How to get your Spotify data
+              How to get your Spotify Extended Streaming History data
             </button>
 
             {showInfo && (
