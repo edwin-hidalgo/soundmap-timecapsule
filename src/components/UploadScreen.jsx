@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { parseStreamingHistory } from '../utils/parseStreamingHistory.js'
-import { demoData } from '../data/demoData.js'
+// Note: demoData.js is superseded by demoEntries.json (fetched and parsed dynamically)
 
 /**
  * UploadScreen — Screen 1: File upload & demo entry point
@@ -118,10 +118,34 @@ export default function UploadScreen({ onDataReady }) {
   // ───────────────────────────────────────────────────────────────────────────
   // Demo Handler
   // ───────────────────────────────────────────────────────────────────────────
-  function handleDemo() {
-    // For demo, we don't have raw entries. Pass empty array for now.
-    // Timeline features will show demo notice if entries are empty.
-    onDataReady(demoData, [])
+  async function handleDemo() {
+    setStatus('processing')
+    setError(null)
+
+    try {
+      // Fetch real demo data (2019-2025 sample of Edwin's history)
+      const res = await fetch('/demoEntries.json')
+      if (!res.ok) {
+        throw new Error('Demo data unavailable. Please try uploading your own data.')
+      }
+
+      const entries = await res.json()
+      if (!Array.isArray(entries) || entries.length === 0) {
+        throw new Error('No demo data found')
+      }
+
+      // Parse the demo entries through the same pipeline as uploaded files
+      const countryData = parseStreamingHistory([entries])
+      if (Object.keys(countryData).length === 0) {
+        throw new Error('Failed to process demo data')
+      }
+
+      // Pass both parsed country stats AND raw entries to app
+      onDataReady(countryData, entries)
+    } catch (err) {
+      setError(err.message)
+      setStatus('error')
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -137,9 +161,9 @@ export default function UploadScreen({ onDataReady }) {
       className="grain-overlay w-full h-full flex items-center justify-center relative"
       style={{
         background: `
-          radial-gradient(ellipse 80% 60% at 10% 80%, rgba(245,166,35,0.07) 0%, transparent 60%),
-          radial-gradient(ellipse 60% 50% at 90% 10%, rgba(245,166,35,0.05) 0%, transparent 55%),
-          #0D1117
+          radial-gradient(ellipse 80% 60% at 10% 80%, rgba(61,120,80,0.08) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 50% at 90% 10%, rgba(61,120,80,0.05) 0%, transparent 55%),
+          rgb(26, 24, 21)
         `,
       }}
     >
@@ -173,7 +197,7 @@ export default function UploadScreen({ onDataReady }) {
             className={`w-full p-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
               isDragOver
                 ? 'border-accent bg-accent/10 scale-102'
-                : 'border-text-secondary/40 hover:border-accent/60'
+                : 'border-text-secondary/40 hover:border-accent/50'
             }`}
           >
             <motion.div
@@ -225,12 +249,12 @@ export default function UploadScreen({ onDataReady }) {
             transition={{ duration: 0.3 }}
             className="flex flex-col items-center gap-4 w-full"
           >
-            <div className="w-full p-4 bg-accent/20 border border-accent/50 rounded text-center">
-              <p className="text-accent text-sm">{error}</p>
+            <div className="w-full p-4 bg-error-surface border border-error rounded text-center">
+              <p className="text-error text-sm">{error}</p>
             </div>
             <button
               onClick={() => setStatus('idle')}
-              className="px-4 py-2 bg-accent hover:bg-accent-secondary text-bg-primary font-sans text-sm rounded transition-colors"
+              className="btn-accent"
             >
               Try Again
             </button>
@@ -260,7 +284,7 @@ export default function UploadScreen({ onDataReady }) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleDemo}
-            className="px-6 py-3 bg-accent/20 hover:bg-accent/30 text-accent border border-accent/50 rounded font-sans text-sm transition-all"
+            className="px-6 py-3 bg-accent/15 hover:bg-accent/25 text-accent-light border border-accent/40 rounded font-sans text-sm transition-all"
           >
             Try Demo  →
           </motion.button>
@@ -287,7 +311,7 @@ export default function UploadScreen({ onDataReady }) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 transition={{ duration: 0.3 }}
-                className="mt-3 p-3 bg-text-secondary/5 border border-text-secondary/10 rounded text-sm text-text-secondary/80 space-y-2"
+                className="mt-3 p-3 bg-surface/60 border border-border rounded text-sm text-text-secondary space-y-2"
               >
                 <p>
                   1. Go to <strong>Spotify Account</strong> → <strong>Privacy Settings</strong>

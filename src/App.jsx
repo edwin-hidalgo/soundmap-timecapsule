@@ -5,6 +5,7 @@ import MapView from './components/MapView.jsx'
 import TimelineView from './components/TimelineView.jsx'
 import ActivityCalendar from './components/ActivityCalendar.jsx'
 import OAuthCallback from './components/OAuthCallback.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 
 // Spotify OAuth configuration
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || null
@@ -122,11 +123,12 @@ export default function App() {
           />
         )}
         {screen === 'timeline' && (
-          <TimelineView
-            key="timeline"
-            allEntries={allEntries}
-            onBack={handleNavigateToMap}
-          />
+          <ErrorBoundary key="timeline">
+            <TimelineView
+              allEntries={allEntries}
+              onBack={handleNavigateToMap}
+            />
+          </ErrorBoundary>
         )}
         {screen === 'activity' && (
           <ActivityCalendar
