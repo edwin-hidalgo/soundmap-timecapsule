@@ -177,10 +177,10 @@ export default function UploadScreen({ onDataReady }) {
         {/* Title & Subtitle */}
         <div className="text-center">
           <h1 className="text-5xl font-serif text-text-primary mb-2">
-            Time Capsule
+            Music Time Capsule
           </h1>
           <p className="text-lg text-text-secondary font-sans">
-            Rediscover what you listened to around the world.
+            Explore your music taste
           </p>
         </div>
 
@@ -284,7 +284,7 @@ export default function UploadScreen({ onDataReady }) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleDemo}
-            className="px-6 py-3 bg-accent/15 hover:bg-accent/25 text-accent-light border border-accent/40 rounded font-sans text-sm transition-all"
+            className="px-6 py-3 bg-accent/35 hover:bg-accent/45 text-accent-light border border-accent/40 rounded font-sans text-sm transition-all"
           >
             Try Demo  →
           </motion.button>
