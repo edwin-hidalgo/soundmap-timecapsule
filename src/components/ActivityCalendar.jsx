@@ -158,77 +158,83 @@ export default function ActivityCalendar({ allEntries, onBack }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="w-full h-full bg-gradient-to-br from-bg-primary to-bg-secondary overflow-auto"
+      className="w-full h-full bg-gradient-to-br from-bg-primary to-bg-secondary flex flex-col"
     >
-      <div className="p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-8">
-          <button
-            onClick={onBack}
-            className="text-text-secondary hover:text-text-primary transition-colors text-sm"
-          >
-            ← Back
-          </button>
-          <div className="text-right">
-            <h1 className="font-serif text-2xl sm:text-3xl text-text-primary mb-1 sm:mb-2">Your Listening Activity</h1>
-            <p className="text-text-secondary text-xs sm:text-sm">
-              {dateRange.start.getFullYear()} — {dayData.size} days of listening
-            </p>
+      {/* Top Section: Header, Legend, Detail Card — scrollable */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-4 sm:p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <button
+              onClick={onBack}
+              className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+            >
+              ← Back
+            </button>
+            <div className="text-right">
+              <h1 className="font-serif text-2xl sm:text-3xl text-text-primary mb-1 sm:mb-2">Your Listening Activity</h1>
+              <p className="text-text-secondary text-xs sm:text-sm">
+                {dateRange.start.getFullYear()} — {dayData.size} days of listening
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-8 text-xs text-text-secondary">
-          <span className="text-xs">Less</span>
-          <div className="flex gap-1 sm:gap-1.5">
-            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/20" />
-            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/40" />
-            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/60" />
-            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/80" />
-            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent" />
+          {/* Legend */}
+          <div className="flex items-center gap-2 sm:gap-4 mb-4 text-xs text-text-secondary">
+            <span className="text-xs">Less</span>
+            <div className="flex gap-1 sm:gap-1.5">
+              <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/20" />
+              <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/40" />
+              <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/60" />
+              <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/80" />
+              <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent" />
+            </div>
+            <span className="text-xs">More</span>
           </div>
-          <span className="text-xs">More</span>
+
+          {/* Detail Card — shows clicked day info */}
+          {hoveredDate && dayData.has(hoveredDate) && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-6 p-4 rounded-lg bg-white/5 border border-accent/30 backdrop-blur"
+            >
+              <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
+                {new Date(hoveredDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </p>
+              <p className="font-mono-stat text-accent text-sm mb-3">
+                {formatDuration(dayData.get(hoveredDate).msPlayed)}
+              </p>
+
+              {dayData.get(hoveredDate).tracks.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
+                  {dayData.get(hoveredDate).tracks.map((track, i) => (
+                    <div key={i} className="text-text-primary text-xs">
+                      <p className="font-medium truncate">{track.name}</p>
+                      <p className="text-text-secondary text-xs truncate">{track.artist}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-text-secondary text-xs">No tracks recorded</p>
+              )}
+            </motion.div>
+          )}
         </div>
+      </div>
 
-        {/* Detail Card — shows clicked day info above calendar */}
-        {hoveredDate && dayData.has(hoveredDate) && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mb-4 p-4 rounded-lg bg-white/5 border border-accent/30 backdrop-blur"
-          >
-            <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
-              {new Date(hoveredDate).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-            <p className="font-mono-stat text-accent text-sm mb-3">
-              {formatDuration(dayData.get(hoveredDate).msPlayed)}
-            </p>
-
-            {dayData.get(hoveredDate).tracks.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
-                {dayData.get(hoveredDate).tracks.map((track, i) => (
-                  <div key={i} className="text-text-primary text-xs">
-                    <p className="font-medium truncate">{track.name}</p>
-                    <p className="text-text-secondary text-xs truncate">{track.artist}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-text-secondary text-xs">No tracks recorded</p>
-            )}
-          </motion.div>
-        )}
-
+      {/* Bottom Section: Calendar Grid — fixed at bottom for thumb access */}
+      <div className="flex-shrink-0 border-t border-accent/10 bg-gradient-to-t from-bg-primary/50 to-transparent p-4 sm:p-6">
         {/* Calendar Grid */}
         <div className="relative">
-          <div className="overflow-x-auto pb-4" ref={scrollContainerRef} onScroll={handleScroll}>
+          <div className="overflow-x-auto" ref={scrollContainerRef} onScroll={handleScroll}>
             <div className="inline-block">
               {/* Month header row */}
               <div className="flex mb-1">
@@ -289,57 +295,53 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               </div>
             </div>
           </div>
-
         </div>
 
-        {/* Bottom padding to prevent content from being covered by fixed scroll indicators */}
-        {scrollWidth > containerWidth && <div className="h-12" />}
-      </div>
-
-      {/* Fixed Scroll Indicators at Bottom — always visible and accessible */}
-      {scrollWidth > containerWidth && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-6 z-10 flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 backdrop-blur border border-accent/20"
-        >
-          {/* Left arrow indicator */}
+        {/* Scroll Indicators — positioned above calendar grid */}
+        {scrollWidth > containerWidth && (
           <motion.div
-            initial={false}
-            animate={{ opacity: hasLeftScroll ? 1 : 0.2 }}
-            transition={{ duration: 0.2 }}
-            className="text-text-secondary/40 text-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3 flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-accent/20"
           >
-            ←
-          </motion.div>
-
-          {/* Progress bar */}
-          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            {/* Left arrow indicator */}
             <motion.div
-              className="h-full bg-accent rounded-full"
-              initial={{ width: '0%' }}
-              animate={{ width: `${scrollProgress}%` }}
-              transition={{ duration: 0.1 }}
-            />
-          </div>
+              initial={false}
+              animate={{ opacity: hasLeftScroll ? 1 : 0.2 }}
+              transition={{ duration: 0.2 }}
+              className="text-text-secondary/40 text-sm"
+            >
+              ←
+            </motion.div>
 
-          {/* Right arrow indicator */}
-          <motion.div
-            initial={false}
-            animate={{ opacity: hasRightScroll ? 1 : 0.2 }}
-            transition={{ duration: 0.2 }}
-            className="text-text-secondary/40 text-sm"
-          >
-            →
+            {/* Progress bar */}
+            <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-accent rounded-full"
+                initial={{ width: '0%' }}
+                animate={{ width: `${scrollProgress}%` }}
+                transition={{ duration: 0.1 }}
+              />
+            </div>
+
+            {/* Right arrow indicator */}
+            <motion.div
+              initial={false}
+              animate={{ opacity: hasRightScroll ? 1 : 0.2 }}
+              transition={{ duration: 0.2 }}
+              className="text-text-secondary/40 text-sm"
+            >
+              →
+            </motion.div>
+
+            {/* Scroll percentage indicator */}
+            <span className="text-xs text-text-secondary/60 ml-2 whitespace-nowrap">
+              {Math.round(scrollProgress)}%
+            </span>
           </motion.div>
-
-          {/* Scroll percentage indicator */}
-          <span className="text-xs text-text-secondary/60 ml-2 whitespace-nowrap">
-            {Math.round(scrollProgress)}%
-          </span>
-        </motion.div>
-      )}
+        )}
+      </div>
     </motion.div>
   )
 }
