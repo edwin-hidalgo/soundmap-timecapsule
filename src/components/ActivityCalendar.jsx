@@ -12,6 +12,7 @@ import { formatDuration } from '../utils/formatters.js'
  */
 export default function ActivityCalendar({ allEntries, onBack }) {
   const [hoveredDate, setHoveredDate] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(null) // Persists selection after user clicks/hovers
   const [scrollPos, setScrollPos] = useState(0)
   const [scrollWidth, setScrollWidth] = useState(0)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -193,7 +194,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
           </div>
 
           {/* Detail Card or Onboarding Guide */}
-          {hoveredDate && dayData.has(hoveredDate) ? (
+          {(selectedDate || hoveredDate) && dayData.has(selectedDate || hoveredDate) ? (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -201,7 +202,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               className="mb-6 p-4 rounded-lg bg-white/5 border border-accent/30 backdrop-blur"
             >
               <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
-                {new Date(hoveredDate).toLocaleDateString('en-US', {
+                {new Date(selectedDate || hoveredDate).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
@@ -209,13 +210,13 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                 })}
               </p>
               <p className="font-mono-stat text-accent text-sm mb-3">
-                {formatDuration(dayData.get(hoveredDate).msPlayed)}
+                {formatDuration(dayData.get(selectedDate || hoveredDate).msPlayed)}
               </p>
 
-              {dayData.get(hoveredDate).tracks.length > 0 ? (
+              {dayData.get(selectedDate || hoveredDate).tracks.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
-                  {dayData.get(hoveredDate).tracks.map((track, i) => (
+                  {dayData.get(selectedDate || hoveredDate).tracks.map((track, i) => (
                     <div key={i} className="text-text-primary text-xs">
                       <p className="font-medium truncate">{track.name}</p>
                       <p className="text-text-secondary text-xs truncate">{track.artist}</p>
@@ -308,14 +309,15 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                         const dateStr = date.toISOString().split('T')[0]
                         const day = dayData.get(dateStr)
                         const isHovered = hoveredDate === dateStr
+                        const isSelected = selectedDate === dateStr
 
                         return (
                           <motion.div
                             key={dateStr}
                             className={`w-4 h-4 sm:w-2.5 sm:h-2.5 rounded-xs cursor-pointer transition-all relative ${getColorClass(
                               dateStr
-                            )} ${isHovered ? 'ring-2 ring-accent' : ''}`}
-                            onClick={() => setHoveredDate(dateStr)}
+                            )} ${isSelected ? 'ring-2 ring-accent' : isHovered ? 'ring-2 ring-accent/50' : ''}`}
+                            onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
                             onMouseEnter={() => setHoveredDate(dateStr)}
                             onMouseLeave={() => setHoveredDate(null)}
                             whileHover={{ scale: 1.3 }}
