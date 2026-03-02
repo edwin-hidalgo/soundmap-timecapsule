@@ -154,6 +154,9 @@ export function detectEras(allEntries) {
     finalEras.splice(smallestIdx, 1)
   }
 
+  // Step 6b: Merge consecutive eras with the same dominant artist
+  finalEras = mergeSameDominantArtistEras(finalEras, periodVectors, periodData)
+
   // Step 7: Build enriched era objects
   const eraList = []
 
@@ -381,6 +384,59 @@ function mergeShortEras(roughEras, periodVectors, periodData) {
   }
 
   return result
+}
+
+/**
+ * mergeSameDominantArtistEras
+ * Merges consecutive eras that have the same dominant artist to avoid duplicates.
+ */
+function mergeSameDominantArtistEras(eras, periodVectors, periodData) {
+  const result = [...eras]
+  let changed = true
+
+  while (changed) {
+    changed = false
+
+    for (let i = 0; i < result.length - 1; i++) {
+      // Get dominant artist for current era
+      const dominantArtistA = getDominantArtist(result[i].periodRange, periodData)
+      // Get dominant artist for next era
+      const dominantArtistB = getDominantArtist(result[i + 1].periodRange, periodData)
+
+      // If same dominant artist, merge them
+      if (dominantArtistA && dominantArtistB && dominantArtistA === dominantArtistB) {
+        result[i].periodRange = [
+          ...result[i].periodRange,
+          ...result[i + 1].periodRange,
+        ].sort()
+        result.splice(i + 1, 1)
+        changed = true
+        break
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * getDominantArtist
+ * Returns the dominant artist for a given era (period range).
+ */
+function getDominantArtist(periodRange, periodData) {
+  const artistScores = new Map()
+
+  for (const periodKey of periodRange) {
+    const period = periodData.get(periodKey)
+    if (!period) continue
+
+    for (const [artist, count] of period.artistCounts) {
+      artistScores.set(artist, (artistScores.get(artist) || 0) + count)
+    }
+  }
+
+  const topEntry = Array.from(artistScores.entries()).sort((a, b) => b[1] - a[1])[0]
+  return topEntry ? topEntry[0] : null
 }
 
 /**
