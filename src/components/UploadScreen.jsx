@@ -317,7 +317,7 @@ export default function UploadScreen({ onDataReady }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="glass-panel flex flex-col items-center gap-6 max-w-sm sm:max-w-md px-4 sm:px-6 py-8 relative z-10"
+        className="glass-panel flex flex-col items-center gap-3 sm:gap-6 max-w-sm sm:max-w-md px-4 sm:px-6 py-6 sm:py-8 relative z-10"
       >
         {/* Status indicator — terminal style */}
         <div className="w-full flex items-center justify-between">
@@ -327,11 +327,11 @@ export default function UploadScreen({ onDataReady }) {
 
         {/* Title & Subtitle */}
         <div className="text-center">
-          <p className="font-mono text-xs text-accent/60 uppercase tracking-widest mb-3">// ARCHIVE_v1.0</p>
-          <h1 className="text-5xl text-text-primary mb-2" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+          <p className="font-mono text-xs text-accent/60 uppercase tracking-widest mb-2 sm:mb-3">// ARCHIVE_v1.0</p>
+          <h1 className="text-3xl sm:text-5xl text-text-primary mb-1 sm:mb-2" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             My Music Memory
           </h1>
-          <p className="font-mono text-sm text-text-secondary uppercase tracking-wide">
+          <p className="font-mono text-xs sm:text-sm text-text-secondary uppercase tracking-wide">
             Explore your historic music taste
           </p>
         </div>
@@ -346,7 +346,7 @@ export default function UploadScreen({ onDataReady }) {
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`w-full p-8 border border-dashed cursor-pointer transition-all ${
+            className={`w-full p-4 sm:p-8 border border-dashed rounded cursor-pointer transition-all ${
               isDragOver
                 ? 'border-accent bg-accent/10 scale-102'
                 : 'border-text-secondary/40 hover:border-accent/50'
@@ -355,16 +355,16 @@ export default function UploadScreen({ onDataReady }) {
             <motion.div
               animate={{ scale: isDragOver ? 1.05 : 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-2 sm:gap-3"
             >
               <p className="font-mono text-xs text-accent/70 uppercase tracking-widest">[ DROP_FILES ]</p>
               <div className="text-center">
-                <p className="font-mono text-xs text-text-primary uppercase tracking-widest">
+                <p className="font-mono text-xs text-text-primary uppercase tracking-widest leading-tight">
                   DRAG_SPOTIFY_STREAMING_HISTORY
                 </p>
-                <p className="font-mono text-xs text-text-secondary uppercase tracking-widest mt-1">OR_CLICK_TO_BROWSE</p>
+                <p className="font-mono text-xs text-text-secondary uppercase tracking-widest mt-0.5 sm:mt-1">OR_CLICK_TO_BROWSE</p>
               </div>
-              <p className="font-mono text-xs text-text-secondary/60 mt-2 uppercase tracking-widest">
+              <p className="font-mono text-xs text-text-secondary/60 mt-1 sm:mt-2 uppercase tracking-widest">
                 ACCEPTS: Streaming_History_Audio_*.json
               </p>
             </motion.div>
