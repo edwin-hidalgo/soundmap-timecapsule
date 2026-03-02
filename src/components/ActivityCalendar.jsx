@@ -158,11 +158,11 @@ export default function ActivityCalendar({ allEntries, onBack }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="w-full h-full bg-gradient-to-br from-bg-primary to-bg-secondary flex flex-col"
+      className="w-full h-full bg-gradient-to-br from-bg-primary to-bg-secondary flex flex-col md:flex-col"
     >
-      {/* Top Section: Header, Legend, Detail Card — scrollable */}
-      <div className="flex-1 overflow-auto">
-        <div className="p-4 sm:p-6">
+      {/* Mobile: Scrollable top section | Desktop: Normal flow */}
+      <div className="flex-1 md:flex-none overflow-auto md:overflow-visible">
+        <div className="p-4 sm:p-6 md:max-w-6xl md:mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <button
@@ -233,22 +233,29 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               exit={{ opacity: 0, y: -10 }}
               className="mb-6 p-4 rounded-lg bg-accent/5 border border-accent/30 backdrop-blur"
             >
-              <h3 className="text-text-primary font-medium text-sm mb-3">📅 Explore Your Listening Activity</h3>
+              <div className="flex items-center gap-2.5 mb-3">
+                <svg className="w-5 h-5 text-text-primary flex-shrink-0" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="1.5"/>
+                  <path d="M3 10h18" strokeWidth="1.5"/>
+                  <path d="M8 2v4M16 2v4" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <h3 className="text-text-primary font-medium text-sm">Explore Your Listening Activity</h3>
+              </div>
               <div className="space-y-3 text-xs text-text-secondary">
                 <div className="flex items-start gap-2">
-                  <span className="text-accent font-bold">1.</span>
+                  <span className="text-accent font-bold flex-shrink-0">1.</span>
                   <span><strong>Scroll the calendar</strong> — Drag left/right to see different months</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-accent font-bold">2.</span>
+                  <span className="text-accent font-bold flex-shrink-0">2.</span>
                   <span><strong>Click a square</strong> — Tap any day to see your top tracks for that day</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-accent font-bold">3.</span>
+                  <span className="text-accent font-bold flex-shrink-0">3.</span>
                   <span><strong>Watch the colors</strong> — Brighter green = more listening that day</span>
                 </div>
                 <div className="pt-2 text-text-secondary/60 text-xs italic">
-                  👇 Try clicking a square with bright colors to get started
+                  Try clicking a square with bright colors to get started
                 </div>
               </div>
             </motion.div>
@@ -256,10 +263,10 @@ export default function ActivityCalendar({ allEntries, onBack }) {
         </div>
       </div>
 
-      {/* Bottom Section: Calendar Grid — fixed at bottom for thumb access */}
-      <div className="flex-shrink-0 border-t border-accent/10 bg-gradient-to-t from-bg-primary/50 to-transparent p-4 sm:p-6">
+      {/* Calendar Grid — Fixed at bottom on mobile, normal flow on desktop */}
+      <div className="flex-shrink-0 md:flex-none md:overflow-visible border-t border-accent/10 bg-gradient-to-t md:bg-none from-bg-primary/50 to-transparent md:from-transparent md:to-transparent p-4 sm:p-6 md:p-6 md:border-t md:max-w-6xl md:mx-auto md:w-full">
         {/* Calendar Grid */}
-        <div className="relative">
+        <div className="relative md:mb-6">
           <div className="overflow-x-auto" ref={scrollContainerRef} onScroll={handleScroll}>
             <div className="inline-block">
               {/* Month header row */}
