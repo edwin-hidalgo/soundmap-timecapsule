@@ -25,7 +25,7 @@ export default function StatsBar({ countryData, onReset, onNavigateToTimeline, o
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4 }}
-      className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel rounded-full px-6 py-3 z-10 flex items-center gap-6"
+      className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel rounded-full px-4 sm:px-6 py-3 z-10 flex items-center gap-3 sm:gap-6"
     >
       <button
         onClick={onReset}

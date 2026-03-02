@@ -30,7 +30,7 @@ export default function CapsulePanel({ country, onClose }) {
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="absolute top-0 right-0 h-full w-[400px] max-w-full glass-panel z-20 overflow-y-auto"
+          className="absolute top-0 right-0 h-full w-full sm:w-[400px] glass-panel z-20 overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6">

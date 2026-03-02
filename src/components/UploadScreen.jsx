@@ -317,7 +317,7 @@ export default function UploadScreen({ onDataReady }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="glass-panel flex flex-col items-center gap-6 max-w-md px-6 py-8 relative z-10"
+        className="glass-panel flex flex-col items-center gap-6 max-w-sm sm:max-w-md px-4 sm:px-6 py-8 relative z-10"
       >
         {/* Status indicator — terminal style */}
         <div className="w-full flex items-center justify-between">

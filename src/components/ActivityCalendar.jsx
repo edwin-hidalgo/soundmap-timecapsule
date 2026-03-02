@@ -161,14 +161,14 @@ export default function ActivityCalendar({ allEntries, onBack }) {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 mb-8 text-xs text-text-secondary">
+        <div className="flex items-center gap-3 sm:gap-4 mb-8 text-xs text-text-secondary">
           <span>Less</span>
-          <div className="flex gap-1">
-            <div className="w-3 h-3 rounded-xs bg-accent/20" />
-            <div className="w-3 h-3 rounded-xs bg-accent/40" />
-            <div className="w-3 h-3 rounded-xs bg-accent/60" />
-            <div className="w-3 h-3 rounded-xs bg-accent/80" />
-            <div className="w-3 h-3 rounded-xs bg-accent" />
+          <div className="flex gap-0.5 sm:gap-1">
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/20" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/40" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/60" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/80" />
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent" />
           </div>
           <span>More</span>
         </div>
@@ -179,7 +179,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
             <div className="inline-block">
               {/* Month header row */}
               <div className="flex mb-1">
-                <div className="w-8" /> {/* space for day labels */}
+                <div className="w-6 sm:w-8" /> {/* space for day labels */}
                 {monthHeaders.map((header, i) => (
                   <div
                     key={i}
@@ -195,13 +195,13 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               </div>
 
               {/* Day labels + grid */}
-              <div className="flex gap-1">
+              <div className="flex gap-0.5 sm:gap-1">
                 {/* Day name column */}
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-0.5 sm:gap-1">
                   {dayNames.map((day, i) => (
                     <div
                       key={day}
-                      className="w-8 h-3 flex items-center justify-center text-xs text-text-secondary font-medium"
+                      className="w-6 sm:w-8 h-2 sm:h-3 flex items-center justify-center text-xs text-text-secondary font-medium"
                     >
                       {day.slice(0, 1)}
                     </div>
@@ -209,9 +209,9 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                 </div>
 
                 {/* Weeks grid */}
-                <div className="flex gap-1">
+                <div className="flex gap-0.5 sm:gap-1">
                   {weeks.map((week, weekIndex) => (
-                    <div key={weekIndex} className="flex flex-col gap-1">
+                    <div key={weekIndex} className="flex flex-col gap-0.5 sm:gap-1">
                       {week.map((date, dayIndex) => {
                         const dateStr = date.toISOString().split('T')[0]
                         const day = dayData.get(dateStr)
@@ -220,7 +220,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                         return (
                           <motion.div
                             key={dateStr}
-                            className={`w-3 h-3 rounded-xs cursor-pointer transition-all relative ${getColorClass(
+                            className={`w-2 h-2 sm:w-3 sm:h-3 rounded-xs cursor-pointer transition-all relative ${getColorClass(
                               dateStr
                             )} ${isHovered ? 'ring-2 ring-accent' : ''}`}
                             onMouseEnter={(e) => {
@@ -252,7 +252,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="fixed z-50 p-3 rounded-lg bg-white/10 backdrop-blur border border-accent/50 min-w-56 pointer-events-none"
+              className="fixed z-50 p-3 rounded-lg bg-white/10 backdrop-blur border border-accent/50 min-w-48 sm:min-w-56 pointer-events-none"
               style={{
                 top: `${tooltipPos.top}px`,
                 left: `${tooltipPos.left}px`,
