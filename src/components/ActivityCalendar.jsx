@@ -192,8 +192,8 @@ export default function ActivityCalendar({ allEntries, onBack }) {
             <span className="text-xs">More</span>
           </div>
 
-          {/* Detail Card — shows clicked day info */}
-          {hoveredDate && dayData.has(hoveredDate) && (
+          {/* Detail Card or Onboarding Guide */}
+          {hoveredDate && dayData.has(hoveredDate) ? (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -225,6 +225,32 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               ) : (
                 <p className="text-text-secondary text-xs">No tracks recorded</p>
               )}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-6 p-4 rounded-lg bg-accent/5 border border-accent/30 backdrop-blur"
+            >
+              <h3 className="text-text-primary font-medium text-sm mb-3">📅 Explore Your Listening Activity</h3>
+              <div className="space-y-3 text-xs text-text-secondary">
+                <div className="flex items-start gap-2">
+                  <span className="text-accent font-bold">1.</span>
+                  <span><strong>Scroll the calendar</strong> — Drag left/right to see different months</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-accent font-bold">2.</span>
+                  <span><strong>Click a square</strong> — Tap any day to see your top tracks for that day</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-accent font-bold">3.</span>
+                  <span><strong>Watch the colors</strong> — Brighter green = more listening that day</span>
+                </div>
+                <div className="pt-2 text-text-secondary/60 text-xs italic">
+                  👇 Try clicking a square with bright colors to get started
+                </div>
+              </div>
             </motion.div>
           )}
         </div>
