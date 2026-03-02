@@ -25,37 +25,38 @@ export default function StatsBar({ countryData, onReset, onNavigateToTimeline, o
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4 }}
-      className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel rounded-full px-4 sm:px-6 py-3 z-10 flex items-center gap-3 sm:gap-6"
+      className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel rounded-full px-3 sm:px-6 py-2 sm:py-3 z-10 flex items-center gap-2 sm:gap-6 text-xs sm:text-sm"
     >
       <button
         onClick={onReset}
-        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+        className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap"
       >
         ← Back
       </button>
 
-      <div className="w-px h-4 bg-text-secondary/30" />
+      <div className="hidden sm:block w-px h-4 bg-text-secondary/30" />
 
       <button
         onClick={onNavigateToTimeline}
-        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+        className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap"
       >
         Timeline
       </button>
 
       <button
         onClick={onNavigateToActivity}
-        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+        className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap"
       >
         Activity
       </button>
 
-      <div className="w-px h-4 bg-text-secondary/30" />
+      <div className="hidden sm:block w-px h-4 bg-text-secondary/30" />
 
-      <StatItem label="Countries" value={totalCountries} />
-      <StatItem label="Plays" value={totalPlays.toLocaleString()} />
-      <StatItem label="Hours" value={formatListeningHours(totalMs)} />
-      <StatItem label="Period" value={dateRange} />
+      <div className="hidden sm:flex items-center gap-2 sm:gap-6">
+        <StatItem label="Countries" value={totalCountries} />
+        <StatItem label="Plays" value={totalPlays.toLocaleString()} />
+        <StatItem label="Hours" value={formatListeningHours(totalMs)} />
+      </div>
     </motion.div>
   )
 }
@@ -63,8 +64,8 @@ export default function StatsBar({ countryData, onReset, onNavigateToTimeline, o
 function StatItem({ label, value }) {
   return (
     <div className="text-center">
-      <p className="font-mono-stat text-text-primary text-sm">{value}</p>
-      <p className="text-text-secondary text-xs uppercase tracking-wide">{label}</p>
+      <p className="font-mono-stat text-text-primary text-sm whitespace-nowrap">{value}</p>
+      <p className="text-text-secondary text-xs uppercase tracking-wide whitespace-nowrap">{label}</p>
     </div>
   )
 }
