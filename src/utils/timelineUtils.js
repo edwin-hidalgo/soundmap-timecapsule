@@ -416,9 +416,8 @@ function computeEraSimilarity(eraAKey, eraBKey, periodVectors) {
  * Generates a human-friendly era name.
  */
 function buildEraName(dominantArtist, eraNumber, numPeriods) {
-  // "The [Artist] Years/Era" for longer eras, or "The [Artist] Phase" for shorter ones
-  const durationLabel = numPeriods >= 4 ? 'Years' : 'Era'
-  return `The ${dominantArtist} ${durationLabel}`
+  // "[Artist] Era" format for all eras
+  return `${dominantArtist} Era`
 }
 
 /**
