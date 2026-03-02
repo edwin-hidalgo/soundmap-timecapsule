@@ -290,42 +290,56 @@ export default function ActivityCalendar({ allEntries, onBack }) {
             </div>
           </div>
 
-          {/* Scroll Indicators — show if more content to scroll */}
-          {scrollWidth > containerWidth && (
-            <div className="mt-3 flex items-center gap-3 text-xs text-text-secondary/60">
-              {/* Left arrow indicator */}
-              <motion.div
-                initial={false}
-                animate={{ opacity: hasLeftScroll ? 1 : 0.2 }}
-                transition={{ duration: 0.2 }}
-                className="text-text-secondary/40"
-              >
-                ←
-              </motion.div>
-
-              {/* Progress bar */}
-              <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-accent"
-                  initial={{ width: '0%' }}
-                  animate={{ width: `${scrollProgress}%` }}
-                  transition={{ duration: 0.1 }}
-                />
-              </div>
-
-              {/* Right arrow indicator */}
-              <motion.div
-                initial={false}
-                animate={{ opacity: hasRightScroll ? 1 : 0.2 }}
-                transition={{ duration: 0.2 }}
-                className="text-text-secondary/40"
-              >
-                →
-              </motion.div>
-            </div>
-          )}
         </div>
+
+        {/* Bottom padding to prevent content from being covered by fixed scroll indicators */}
+        {scrollWidth > containerWidth && <div className="h-12" />}
       </div>
+
+      {/* Fixed Scroll Indicators at Bottom — always visible and accessible */}
+      {scrollWidth > containerWidth && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-6 z-10 flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 backdrop-blur border border-accent/20"
+        >
+          {/* Left arrow indicator */}
+          <motion.div
+            initial={false}
+            animate={{ opacity: hasLeftScroll ? 1 : 0.2 }}
+            transition={{ duration: 0.2 }}
+            className="text-text-secondary/40 text-sm"
+          >
+            ←
+          </motion.div>
+
+          {/* Progress bar */}
+          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-accent rounded-full"
+              initial={{ width: '0%' }}
+              animate={{ width: `${scrollProgress}%` }}
+              transition={{ duration: 0.1 }}
+            />
+          </div>
+
+          {/* Right arrow indicator */}
+          <motion.div
+            initial={false}
+            animate={{ opacity: hasRightScroll ? 1 : 0.2 }}
+            transition={{ duration: 0.2 }}
+            className="text-text-secondary/40 text-sm"
+          >
+            →
+          </motion.div>
+
+          {/* Scroll percentage indicator */}
+          <span className="text-xs text-text-secondary/60 ml-2 whitespace-nowrap">
+            {Math.round(scrollProgress)}%
+          </span>
+        </motion.div>
+      )}
     </motion.div>
   )
 }
