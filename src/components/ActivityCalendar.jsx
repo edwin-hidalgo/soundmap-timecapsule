@@ -17,13 +17,73 @@ export default function ActivityCalendar({ allEntries, onBack }) {
   // Group entries by day
   const dayData = useMemo(() => groupByDay(allEntries), [allEntries])
 
-  // Get date range
+  // Get date range with month buffers (show full months with at least 3 weeks of space)
   const dateRange = useMemo(() => {
     if (dayData.size === 0) return { start: null, end: null }
     const dates = Array.from(dayData.keys()).sort()
+    const firstDate = new Date(dates[0])
+    const lastDate = new Date(dates[dates.length - 1])
+
+    // Helper: count how many "month weeks" (1-7, 8-14, 15-21, 22-28, 29-31) contain data
+    const countWeeksWithData = (month, year) => {
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      const weekRanges = [
+        [1, 7], [8, 14], [15, 21], [22, 28], [29, daysInMonth]
+      ]
+      let count = 0
+      for (const [start, end] of weekRanges) {
+        for (let day = start; day <= end; day++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          if (dayData.has(dateStr)) {
+            count++
+            break // Found data in this week, count it once
+          }
+        }
+      }
+      return count
+    }
+
+    // Round start to 1st of the month
+    let bufferStart = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1)
+
+    // If start month has < 3 weeks of data, extend back within the month
+    const startMonth = firstDate.getMonth()
+    const startYear = firstDate.getFullYear()
+    let weeksInStartMonth = countWeeksWithData(startMonth, startYear)
+    while (weeksInStartMonth < 3) {
+      const currentDay = bufferStart.getDate()
+      if (currentDay > 1) {
+        bufferStart.setDate(currentDay - 7) // Go back one week
+        weeksInStartMonth = countWeeksWithData(startMonth, startYear)
+      } else {
+        break // Can't go back further within the month
+      }
+    }
+
+    // Round end to last day of the month
+    let bufferEnd = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 0)
+
+    // If end month has < 3 weeks of data, extend forward within the month
+    const endMonth = lastDate.getMonth()
+    const endYear = lastDate.getFullYear()
+    const daysInEndMonth = bufferEnd.getDate()
+    let weeksInEndMonth = countWeeksWithData(endMonth, endYear)
+    while (weeksInEndMonth < 3) {
+      const currentDay = bufferEnd.getDate()
+      if (currentDay < daysInEndMonth) {
+        bufferEnd.setDate(currentDay + 7) // Go forward one week
+        if (bufferEnd.getDate() > daysInEndMonth) {
+          bufferEnd.setDate(daysInEndMonth)
+        }
+        weeksInEndMonth = countWeeksWithData(endMonth, endYear)
+      } else {
+        break // Already at end of month
+      }
+    }
+
     return {
-      start: new Date(dates[0]),
-      end: new Date(dates[dates.length - 1]),
+      start: bufferStart,
+      end: bufferEnd,
     }
   }, [dayData])
 
@@ -75,20 +135,62 @@ export default function ActivityCalendar({ allEntries, onBack }) {
   }
 
   // Generate grid: weeks from start date to end date (Sunday–Saturday)
+  // Don't round back if it would include a different month (prevents overlap with previous month)
   const start = new Date(dateRange.start)
-  start.setDate(start.getDate() - start.getDay())
+  const dayOfWeek = start.getDay()
+  const prevSunday = new Date(start)
+  prevSunday.setDate(prevSunday.getDate() - dayOfWeek)
 
   const weeks = []
-  let currentWeekStart = new Date(start)
-  while (currentWeekStart <= dateRange.end) {
-    const week = []
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(currentWeekStart)
-      date.setDate(date.getDate() + i)
-      week.push(date)
+
+  // Check if rounding back would go into a different month
+  const wouldIncludePreviousMonth =
+    prevSunday.getMonth() !== start.getMonth() ||
+    prevSunday.getFullYear() !== start.getFullYear()
+
+  if (wouldIncludePreviousMonth && dayOfWeek !== 0) {
+    // Create first partial week with padding, starting from the target month
+    const firstWeek = []
+    // Add null placeholders for days before the month starts (Sunday-Thursday before the 1st)
+    for (let i = 0; i < dayOfWeek; i++) {
+      firstWeek.push(null)
     }
-    weeks.push(week)
-    currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+    // Add days from the target month's 1st to end of that week
+    const daysInFirstWeek = 7 - dayOfWeek
+    for (let i = 0; i < daysInFirstWeek; i++) {
+      const date = new Date(start)
+      date.setDate(date.getDate() + i)
+      firstWeek.push(date)
+    }
+    weeks.push(firstWeek)
+
+    // Continue with full weeks starting from the first Sunday in the month
+    let currentWeekStart = new Date(start)
+    currentWeekStart.setDate(currentWeekStart.getDate() + daysInFirstWeek)
+    while (currentWeekStart <= dateRange.end) {
+      const week = []
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeekStart)
+        date.setDate(date.getDate() + i)
+        week.push(date)
+      }
+      weeks.push(week)
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+    }
+  } else {
+    // Safe to round back to previous Sunday
+    start.setDate(start.getDate() - dayOfWeek)
+    let currentWeekStart = new Date(start)
+    while (currentWeekStart <= dateRange.end) {
+      const week = []
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeekStart)
+        date.setDate(date.getDate() + i)
+        week.push(date)
+      }
+      weeks.push(week)
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+    }
   }
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -103,17 +205,33 @@ export default function ActivityCalendar({ allEntries, onBack }) {
 
     // Always seed with the first month/year at week 0
     if (weeks.length > 0) {
-      const firstDate = weeks[0][0]
-      const m = firstDate.getMonth()
-      const y = firstDate.getFullYear()
-      months.push({ month: monthNames[m], weekIndex: 0 })
-      seenMonths.add(`${y}-${m}`)
-      years.push({ year: y, weekIndex: 0 })
-      seenYears.add(`${y}`)
+      // Find the first non-null date (handles partial weeks with null placeholders)
+      let firstDate = null
+      for (const week of weeks) {
+        for (const date of week) {
+          if (date !== null) {
+            firstDate = date
+            break
+          }
+        }
+        if (firstDate) break
+      }
+
+      if (firstDate) {
+        const m = firstDate.getMonth()
+        const y = firstDate.getFullYear()
+        months.push({ month: monthNames[m], weekIndex: 0 })
+        seenMonths.add(`${y}-${m}`)
+        years.push({ year: y, weekIndex: 0 })
+        seenYears.add(`${y}`)
+      }
     }
 
     for (let weekIdx = 0; weekIdx < weeks.length; weekIdx++) {
       for (const date of weeks[weekIdx]) {
+        // Skip null placeholders from partial weeks
+        if (date === null) continue
+
         const m = date.getMonth()
         const y = date.getFullYear()
         const mk = `${y}-${m}`
@@ -146,6 +264,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
           style={{
             display: 'grid',
             gridTemplateColumns: `${labelWidth}px repeat(${weeks.length}, ${cellSize}px)`,
+            gridTemplateRows: `auto repeat(7, ${cellSize}px) auto`,
             gap: `${gap}px`,
           }}
         >
@@ -154,7 +273,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
           {monthHeaders.map((header, i) => (
             <div
               key={i}
-              className="text-xs text-text-secondary font-medium overflow-hidden"
+              className="text-xs text-text-secondary font-medium truncate px-2 py-1"
               style={{
                 gridColumn: `${header.weekIndex + 2} / ${(monthHeaders[i + 1]?.weekIndex ?? weeks.length) + 2}`,
                 gridRow: 1,
@@ -183,6 +302,12 @@ export default function ActivityCalendar({ allEntries, onBack }) {
           {/* Rows 2–8: Calendar cells */}
           {weeks.map((week, weekIdx) =>
             week.map((date, dayIdx) => {
+              // Skip rendering null placeholders (used for padding in partial weeks)
+              if (date === null) return null
+
+              // Skip rendering cells from the first week if it's a partial week (cleanup for demo)
+              if (weekIdx === 0 && weeks[0].some(d => d === null)) return null
+
               const dateStr = date.toISOString().split('T')[0]
               const isHovered = hoveredDate === dateStr
               const isSelected = selectedDate === dateStr
@@ -212,7 +337,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
           {yearHeaders.map((header, i) => (
             <div
               key={i}
-              className="text-xs text-text-secondary/60 font-medium overflow-hidden"
+              className="text-xs text-text-secondary/60 font-medium truncate px-2 py-1"
               style={{
                 gridColumn: `${header.weekIndex + 2} / ${(yearHeaders[i + 1]?.weekIndex ?? weeks.length) + 2}`,
                 gridRow: 9,
