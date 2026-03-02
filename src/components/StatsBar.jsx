@@ -50,22 +50,22 @@ export default function StatsBar({ countryData, onReset, onNavigateToTimeline, o
         Activity
       </button>
 
-      <div className="hidden sm:block w-px h-4 bg-text-secondary/30" />
+      <div className="w-px h-3 sm:h-4 bg-text-secondary/30" />
 
-      <div className="hidden sm:flex items-center gap-2 sm:gap-6">
-        <StatItem label="Countries" value={totalCountries} />
-        <StatItem label="Plays" value={totalPlays.toLocaleString()} />
-        <StatItem label="Hours" value={formatListeningHours(totalMs)} />
+      <div className="flex items-center gap-2 sm:gap-6">
+        <StatItem label="Countries" value={totalCountries} mobile />
+        <StatItem label="Plays" value={totalPlays.toLocaleString()} mobile />
+        <StatItem label="Hours" value={formatListeningHours(totalMs)} mobile />
       </div>
     </motion.div>
   )
 }
 
-function StatItem({ label, value }) {
+function StatItem({ label, value, mobile }) {
   return (
     <div className="text-center">
-      <p className="font-mono-stat text-text-primary text-sm whitespace-nowrap">{value}</p>
-      <p className="text-text-secondary text-xs uppercase tracking-wide whitespace-nowrap">{label}</p>
+      <p className="font-mono-stat text-text-primary text-xs sm:text-sm whitespace-nowrap">{value}</p>
+      <p className="text-text-secondary text-xs uppercase tracking-wide whitespace-nowrap text-opacity-70">{label}</p>
     </div>
   )
 }
