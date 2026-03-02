@@ -38,14 +38,14 @@ export default function StatsBar({ countryData, onReset, onNavigateToTimeline, o
 
       <button
         onClick={onNavigateToTimeline}
-        className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap"
+        className="px-3 py-1 border border-accent/50 text-text-secondary hover:border-accent hover:bg-accent/10 hover:text-text-primary transition-all whitespace-nowrap"
       >
         Timeline
       </button>
 
       <button
         onClick={onNavigateToActivity}
-        className="text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap"
+        className="px-3 py-1 border border-accent/50 text-text-secondary hover:border-accent hover:bg-accent/10 hover:text-text-primary transition-all whitespace-nowrap"
       >
         Activity
       </button>
