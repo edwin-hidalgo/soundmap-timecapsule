@@ -60,17 +60,17 @@ export default function ActivityCalendar({ allEntries, onBack }) {
         transition={{ duration: 0.4 }}
         className="w-full h-full bg-gradient-to-br from-bg-primary to-bg-secondary overflow-auto"
       >
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
             <button
               onClick={onBack}
               className="text-text-secondary hover:text-text-primary transition-colors text-sm"
             >
               ← Back
             </button>
-            <h1 className="font-serif text-3xl text-text-primary">Your Listening Activity</h1>
+            <h1 className="font-serif text-2xl sm:text-3xl text-text-primary">Your Listening Activity</h1>
           </div>
-          <p className="text-text-secondary text-center py-8">No activity data to display.</p>
+          <p className="text-text-secondary text-center py-6 sm:py-8">No activity data to display.</p>
         </div>
       </motion.div>
     )
@@ -143,9 +143,9 @@ export default function ActivityCalendar({ allEntries, onBack }) {
       transition={{ duration: 0.4 }}
       className="w-full h-full bg-gradient-to-br from-bg-primary to-bg-secondary overflow-auto"
     >
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
           <button
             onClick={onBack}
             className="text-text-secondary hover:text-text-primary transition-colors text-sm"
@@ -153,24 +153,24 @@ export default function ActivityCalendar({ allEntries, onBack }) {
             ← Back
           </button>
           <div className="text-right">
-            <h1 className="font-serif text-3xl text-text-primary mb-2">Your Listening Activity</h1>
-            <p className="text-text-secondary text-sm">
+            <h1 className="font-serif text-2xl sm:text-3xl text-text-primary mb-1 sm:mb-2">Your Listening Activity</h1>
+            <p className="text-text-secondary text-xs sm:text-sm">
               {dateRange.start.getFullYear()} — {dayData.size} days of listening
             </p>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 sm:gap-4 mb-8 text-xs text-text-secondary">
-          <span>Less</span>
-          <div className="flex gap-0.5 sm:gap-1">
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/20" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/40" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/60" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent/80" />
-            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-xs bg-accent" />
+        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-8 text-xs text-text-secondary">
+          <span className="text-xs">Less</span>
+          <div className="flex gap-1 sm:gap-1.5">
+            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/20" />
+            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/40" />
+            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/60" />
+            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent/80" />
+            <div className="w-3 h-3 sm:w-2.5 sm:h-2.5 rounded-xs bg-accent" />
           </div>
-          <span>More</span>
+          <span className="text-xs">More</span>
         </div>
 
         {/* Calendar Grid */}
@@ -185,8 +185,8 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                     key={i}
                     className="text-xs text-text-secondary font-medium"
                     style={{
-                      width: `${(header.offset + 1) * 14}px`,
-                      paddingLeft: `${header.offset * 14}px`,
+                      width: `${(header.offset + 1) * 20}px`,
+                      paddingLeft: `${header.offset * 20}px`,
                     }}
                   >
                     {header.month}
@@ -195,13 +195,13 @@ export default function ActivityCalendar({ allEntries, onBack }) {
               </div>
 
               {/* Day labels + grid */}
-              <div className="flex gap-0.5 sm:gap-1">
+              <div className="flex gap-1 sm:gap-1">
                 {/* Day name column */}
-                <div className="flex flex-col gap-0.5 sm:gap-1">
+                <div className="flex flex-col gap-1 sm:gap-1">
                   {dayNames.map((day, i) => (
                     <div
                       key={day}
-                      className="w-6 sm:w-8 h-2 sm:h-3 flex items-center justify-center text-xs text-text-secondary font-medium"
+                      className="w-6 sm:w-8 h-4 sm:h-2.5 flex items-center justify-center text-xs text-text-secondary font-medium"
                     >
                       {day.slice(0, 1)}
                     </div>
@@ -209,9 +209,9 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                 </div>
 
                 {/* Weeks grid */}
-                <div className="flex gap-0.5 sm:gap-1">
+                <div className="flex gap-1 sm:gap-1">
                   {weeks.map((week, weekIndex) => (
-                    <div key={weekIndex} className="flex flex-col gap-0.5 sm:gap-1">
+                    <div key={weekIndex} className="flex flex-col gap-1 sm:gap-1">
                       {week.map((date, dayIndex) => {
                         const dateStr = date.toISOString().split('T')[0]
                         const day = dayData.get(dateStr)
@@ -220,7 +220,7 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                         return (
                           <motion.div
                             key={dateStr}
-                            className={`w-2 h-2 sm:w-3 sm:h-3 rounded-xs cursor-pointer transition-all relative ${getColorClass(
+                            className={`w-4 h-4 sm:w-2.5 sm:h-2.5 rounded-xs cursor-pointer transition-all relative ${getColorClass(
                               dateStr
                             )} ${isHovered ? 'ring-2 ring-accent' : ''}`}
                             onMouseEnter={(e) => {
