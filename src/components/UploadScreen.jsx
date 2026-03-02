@@ -22,6 +22,7 @@ export default function UploadScreen({ onDataReady }) {
   const [showInfo, setShowInfo] = useState(false)
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
+  const waveCanvasRef = useRef(null)
 
   // ───────────────────────────────────────────────────────────────────────────
   // Canvas Dithering Animation — Forest Green Wave Dots
@@ -43,7 +44,7 @@ export default function UploadScreen({ onDataReady }) {
     const COLOR_BG = [26, 24, 21]       // --color-bg-primary
     const COLOR_DOT = [61, 120, 80]     // --color-accent (forest green)
 
-    const scale = 6  // pixel block size
+    const scale = 2  // pixel block size — smaller = finer, denser dots
     let width, height, time = 0
     let animId
 
@@ -85,6 +86,67 @@ export default function UploadScreen({ onDataReady }) {
       }
 
       ctx.putImageData(imageData, 0, 0)
+      animId = requestAnimationFrame(draw)
+    }
+
+    resize()
+    window.addEventListener('resize', resize)
+    animId = requestAnimationFrame(draw)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Canvas Spectral Waveform — Music Visualizer Strip
+  // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = waveCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let time = 0
+    let animId
+
+    function resize() {
+      canvas.width = canvas.clientWidth
+      canvas.height = canvas.clientHeight
+    }
+
+    function draw() {
+      const w = canvas.width
+      const h = canvas.height
+      time += 0.04
+
+      // Clear
+      ctx.clearRect(0, 0, w, h)
+
+      // Spectral bars — vertical lines from center, like a music visualizer
+      ctx.beginPath()
+      ctx.strokeStyle = 'rgba(61, 120, 80, 0.7)'
+      ctx.lineWidth = 1.5
+
+      for (let x = 0; x < w; x += 3) {
+        const noise = Math.sin(x * 0.05 + time * 8) * 12
+        const barH = (Math.sin(x * 0.015 + time * 3) * 0.5 + 0.5) * (h * 0.7) + noise
+        const yCenter = h / 2
+        ctx.moveTo(x, yCenter - barH / 2)
+        ctx.lineTo(x, yCenter + barH / 2)
+      }
+      ctx.stroke()
+
+      // Faint grid lines scrolling left
+      ctx.strokeStyle = 'rgba(61, 120, 80, 0.08)'
+      ctx.lineWidth = 1
+      for (let i = 0; i < w; i += 60) {
+        const offset = i - ((time * 60) % 60)
+        ctx.beginPath()
+        ctx.moveTo(offset, 0)
+        ctx.lineTo(offset, h)
+        ctx.stroke()
+      }
+
       animId = requestAnimationFrame(draw)
     }
 
@@ -255,7 +317,7 @@ export default function UploadScreen({ onDataReady }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="flex flex-col items-center gap-6 max-w-md px-6 py-8 relative z-10"
+        className="glass-panel rounded-lg flex flex-col items-center gap-6 max-w-md px-6 py-8 relative z-10"
       >
         {/* Title & Subtitle */}
         <div className="text-center">
@@ -413,6 +475,13 @@ export default function UploadScreen({ onDataReady }) {
           </motion.div>
         )}
       </motion.div>
+
+      {/* Spectral waveform strip — bottom decorative element */}
+      <canvas
+        ref={waveCanvasRef}
+        className="absolute bottom-0 left-0 w-full z-0 pointer-events-none"
+        style={{ height: '80px' }}
+      />
     </motion.div>
   )
 }
