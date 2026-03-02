@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { groupByDay } from '../utils/timelineUtils.js'
 import { formatDuration } from '../utils/formatters.js'
@@ -12,7 +12,10 @@ import { formatDuration } from '../utils/formatters.js'
  */
 export default function ActivityCalendar({ allEntries, onBack }) {
   const [hoveredDate, setHoveredDate] = useState(null)
-  const [tooltipPos, setTooltipPos] = useState(null)
+  const [scrollPos, setScrollPos] = useState(0)
+  const [scrollWidth, setScrollWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
+  const scrollContainerRef = useRef(null)
 
   // Group entries by day
   const dayData = useMemo(() => groupByDay(allEntries), [allEntries])
@@ -111,6 +114,20 @@ export default function ActivityCalendar({ allEntries, onBack }) {
     'Dec',
   ]
 
+  // Track scroll position for scroll indicators
+  const handleScroll = (e) => {
+    const container = e.currentTarget
+    setScrollPos(container.scrollLeft)
+    setScrollWidth(container.scrollWidth)
+    setContainerWidth(container.clientWidth)
+  }
+
+  // Calculate scroll progress (0-100%)
+  const maxScroll = Math.max(0, scrollWidth - containerWidth)
+  const scrollProgress = maxScroll > 0 ? (scrollPos / maxScroll) * 100 : 0
+  const hasLeftScroll = scrollPos > 0
+  const hasRightScroll = scrollPos < maxScroll - 10
+
   // Get month headers for the grid
   const monthHeaders = useMemo(() => {
     const headers = []
@@ -173,9 +190,45 @@ export default function ActivityCalendar({ allEntries, onBack }) {
           <span className="text-xs">More</span>
         </div>
 
+        {/* Detail Card — shows clicked day info above calendar */}
+        {hoveredDate && dayData.has(hoveredDate) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-4 p-4 rounded-lg bg-white/5 border border-accent/30 backdrop-blur"
+          >
+            <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
+              {new Date(hoveredDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+            <p className="font-mono-stat text-accent text-sm mb-3">
+              {formatDuration(dayData.get(hoveredDate).msPlayed)}
+            </p>
+
+            {dayData.get(hoveredDate).tracks.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
+                {dayData.get(hoveredDate).tracks.map((track, i) => (
+                  <div key={i} className="text-text-primary text-xs">
+                    <p className="font-medium truncate">{track.name}</p>
+                    <p className="text-text-secondary text-xs truncate">{track.artist}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-text-secondary text-xs">No tracks recorded</p>
+            )}
+          </motion.div>
+        )}
+
         {/* Calendar Grid */}
         <div className="relative">
-          <div className="overflow-x-auto pb-4">
+          <div className="overflow-x-auto pb-4" ref={scrollContainerRef} onScroll={handleScroll}>
             <div className="inline-block">
               {/* Month header row */}
               <div className="flex mb-1">
@@ -223,18 +276,9 @@ export default function ActivityCalendar({ allEntries, onBack }) {
                             className={`w-4 h-4 sm:w-2.5 sm:h-2.5 rounded-xs cursor-pointer transition-all relative ${getColorClass(
                               dateStr
                             )} ${isHovered ? 'ring-2 ring-accent' : ''}`}
-                            onMouseEnter={(e) => {
-                              setHoveredDate(dateStr)
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setTooltipPos({
-                                top: rect.top - 60,
-                                left: rect.left - 50,
-                              })
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredDate(null)
-                              setTooltipPos(null)
-                            }}
+                            onClick={() => setHoveredDate(dateStr)}
+                            onMouseEnter={() => setHoveredDate(dateStr)}
+                            onMouseLeave={() => setHoveredDate(null)}
                             whileHover={{ scale: 1.3 }}
                           />
                         )
@@ -246,44 +290,39 @@ export default function ActivityCalendar({ allEntries, onBack }) {
             </div>
           </div>
 
-          {/* Tooltip - positioned relative to the calendar container */}
-          {hoveredDate && dayData.has(hoveredDate) && tooltipPos && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="fixed z-50 p-3 rounded-lg bg-white/10 backdrop-blur border border-accent/50 min-w-48 sm:min-w-56 pointer-events-none"
-              style={{
-                top: `${tooltipPos.top}px`,
-                left: `${tooltipPos.left}px`,
-              }}
-            >
-              <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
-                {new Date(hoveredDate).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </p>
-              <p className="font-mono-stat text-accent text-sm mb-3">
-                {formatDuration(dayData.get(hoveredDate).msPlayed)}
-              </p>
+          {/* Scroll Indicators — show if more content to scroll */}
+          {scrollWidth > containerWidth && (
+            <div className="mt-3 flex items-center gap-3 text-xs text-text-secondary/60">
+              {/* Left arrow indicator */}
+              <motion.div
+                initial={false}
+                animate={{ opacity: hasLeftScroll ? 1 : 0.2 }}
+                transition={{ duration: 0.2 }}
+                className="text-text-secondary/40"
+              >
+                ←
+              </motion.div>
 
-              {dayData.get(hoveredDate).tracks.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
-                  {dayData.get(hoveredDate).tracks.map((track, i) => (
-                    <div key={i} className="text-text-primary text-xs">
-                      <p className="font-medium truncate">{track.name}</p>
-                      <p className="text-text-secondary text-xs truncate">{track.artist}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-secondary text-xs">No tracks recorded</p>
-              )}
-            </motion.div>
+              {/* Progress bar */}
+              <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-accent"
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${scrollProgress}%` }}
+                  transition={{ duration: 0.1 }}
+                />
+              </div>
+
+              {/* Right arrow indicator */}
+              <motion.div
+                initial={false}
+                animate={{ opacity: hasRightScroll ? 1 : 0.2 }}
+                transition={{ duration: 0.2 }}
+                className="text-text-secondary/40"
+              >
+                →
+              </motion.div>
+            </div>
           )}
         </div>
       </div>
