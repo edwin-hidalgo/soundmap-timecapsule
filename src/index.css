@@ -1,5 +1,5 @@
 /* 1. Google Fonts — MUST be first line */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
 
 /* 2. Tailwind CSS 4 */
 @import "tailwindcss";
@@ -20,10 +20,10 @@
   --color-text-secondary:   #B5A89A;
   --color-text-muted:       #8F8679;
 
-  /* Accent — forest green */
-  --color-accent:           #3D7850;
-  --color-accent-secondary: #2F5F40;
-  --color-accent-light:     #5A9668;
+  /* Accent — brighter forest green */
+  --color-accent:           #5FB875;
+  --color-accent-secondary: #4A9F60;
+  --color-accent-light:     #7FCC99;
 
   /* Borders */
   --color-border:           #3A342F;
@@ -37,6 +37,7 @@
   --font-family-serif: "Instrument Serif", Georgia, serif;
   --font-family-sans:  "DM Sans", system-ui, sans-serif;
   --font-family-mono:  "JetBrains Mono", "Fira Code", monospace;
+  --font-family-title: "Space Mono", monospace;
 
   /* Radius scale */
   --radius-xs: 2px;
@@ -48,7 +49,7 @@
 
 /* 5. CSS vars for rgba values (can't go in @theme) */
 :root {
-  --bg-glass:    rgba(36, 34, 24, 0.85);
+  --bg-glass:    rgba(16, 17, 13, 0.85);
   --accent-glow: rgba(61, 120, 80, 0.25);
   --surface-dim: rgba(45, 40, 35, 0.6);
 }

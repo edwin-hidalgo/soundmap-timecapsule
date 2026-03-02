@@ -117,7 +117,7 @@ export default function UploadScreen({ onDataReady }) {
     function draw() {
       const w = canvas.width
       const h = canvas.height
-      time += 0.04
+      time += 0.012
 
       // Clear
       ctx.clearRect(0, 0, w, h)
@@ -317,14 +317,21 @@ export default function UploadScreen({ onDataReady }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
-        className="glass-panel rounded-lg flex flex-col items-center gap-6 max-w-md px-6 py-8 relative z-10"
+        className="glass-panel flex flex-col items-center gap-6 max-w-md px-6 py-8 relative z-10"
       >
+        {/* Status indicator — terminal style */}
+        <div className="w-full flex items-center justify-between">
+          <span className="font-mono text-xs text-accent/70 uppercase tracking-widest">/// MY_MUSIC_MEMORY</span>
+          <span className="font-mono text-xs text-text-secondary/60 uppercase tracking-widest">STATUS: READY</span>
+        </div>
+
         {/* Title & Subtitle */}
         <div className="text-center">
-          <h1 className="text-5xl font-serif text-text-primary mb-2">
+          <p className="font-mono text-xs text-accent/60 uppercase tracking-widest mb-3">// ARCHIVE_v1.0</p>
+          <h1 className="text-5xl text-text-primary mb-2" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             My Music Memory
           </h1>
-          <p className="text-lg text-text-secondary font-sans">
+          <p className="font-mono text-sm text-text-secondary uppercase tracking-wide">
             Explore your historic music taste
           </p>
         </div>
@@ -339,7 +346,7 @@ export default function UploadScreen({ onDataReady }) {
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`w-full p-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+            className={`w-full p-8 border border-dashed cursor-pointer transition-all ${
               isDragOver
                 ? 'border-accent bg-accent/10 scale-102'
                 : 'border-text-secondary/40 hover:border-accent/50'
@@ -350,15 +357,15 @@ export default function UploadScreen({ onDataReady }) {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="flex flex-col items-center gap-3"
             >
-              <p className="text-2xl">↑</p>
+              <p className="font-mono text-xs text-accent/70 uppercase tracking-widest">[ DROP_FILES ]</p>
               <div className="text-center">
-                <p className="text-text-primary font-sans">
-                  Drop your Spotify Extended Streaming History files
+                <p className="font-mono text-xs text-text-primary uppercase tracking-widest">
+                  DRAG_SPOTIFY_STREAMING_HISTORY
                 </p>
-                <p className="text-sm text-text-secondary">or click to browse</p>
+                <p className="font-mono text-xs text-text-secondary uppercase tracking-widest mt-1">OR_CLICK_TO_BROWSE</p>
               </div>
-              <p className="text-xs text-text-secondary/60 mt-2">
-                Accepts Streaming_History_Audio_*.json
+              <p className="font-mono text-xs text-text-secondary/60 mt-2 uppercase tracking-widest">
+                ACCEPTS: Streaming_History_Audio_*.json
               </p>
             </motion.div>
             <input
@@ -415,7 +422,7 @@ export default function UploadScreen({ onDataReady }) {
             className="flex items-center gap-3 w-full"
           >
             <div className="flex-1 h-px bg-text-secondary/20" />
-            <span className="text-text-secondary/60 text-sm">or</span>
+            <span className="font-mono text-text-secondary/60 text-xs uppercase tracking-widest">// OR //</span>
             <div className="flex-1 h-px bg-text-secondary/20" />
           </motion.div>
         )}
@@ -429,9 +436,9 @@ export default function UploadScreen({ onDataReady }) {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleDemo}
-            className="px-6 py-3 bg-accent/35 hover:bg-accent/45 text-accent-light border border-accent/40 rounded font-sans text-sm transition-all"
+            className="px-6 py-3 bg-transparent hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
           >
-            Try Demo  →
+            [ TRY_DEMO ]  →
           </motion.button>
         )}
 
@@ -445,10 +452,10 @@ export default function UploadScreen({ onDataReady }) {
           >
             <button
               onClick={() => setShowInfo(!showInfo)}
-              className="flex items-center gap-2 text-text-secondary/70 hover:text-text-secondary transition-colors text-sm"
+              className="flex items-center gap-2 text-text-secondary/70 hover:text-text-secondary transition-colors font-mono text-xs uppercase tracking-widest"
             >
-              <span className="text-xs">{showInfo ? '▾' : '▸'}</span>
-              How to get your Spotify Extended Streaming History data
+              <span>{showInfo ? '▾' : '▸'}</span>
+              HOW_TO_GET_SPOTIFY_DATA
             </button>
 
             {showInfo && (
