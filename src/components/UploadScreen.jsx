@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { parseStreamingHistory } from '../utils/parseStreamingHistory.js'
 // Note: demoData.js is superseded by demoEntries.json (fetched and parsed dynamically)
@@ -21,6 +21,82 @@ export default function UploadScreen({ onDataReady }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const fileInputRef = useRef(null)
+  const canvasRef = useRef(null)
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Canvas Dithering Animation — Forest Green Wave Dots
+  // ───────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { alpha: false })
+
+    // Bayer 4x4 ordered dither matrix
+    const bayer4 = [
+      [0, 8, 2, 10],
+      [12, 4, 14, 6],
+      [3, 11, 1, 9],
+      [15, 7, 13, 5],
+    ]
+
+    // Color palette — our design system
+    const COLOR_BG = [26, 24, 21]       // --color-bg-primary
+    const COLOR_DOT = [61, 120, 80]     // --color-accent (forest green)
+
+    const scale = 6  // pixel block size
+    let width, height, time = 0
+    let animId
+
+    function resize() {
+      width = Math.ceil(canvas.clientWidth / scale)
+      height = Math.ceil(canvas.clientHeight / scale)
+      canvas.width = width
+      canvas.height = height
+    }
+
+    function draw() {
+      const imageData = ctx.createImageData(width, height)
+      const data = imageData.data
+      time += 0.025
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = (y * width + x) * 4
+
+          // Wave signal — layered sine waves for flowing organic motion
+          let signal =
+            Math.sin(x * 0.08 + time * 0.8) +
+            Math.sin(y * 0.06 + time * 0.5) +
+            Math.sin((x + y) * 0.04 + time * 1.2) * 0.5
+
+          // Normalize to 0–1
+          let value = Math.max(0, Math.min(1, (signal + 2.5) / 5))
+
+          // Bayer threshold dither
+          const threshold = bayer4[y % 4][x % 4] / 16
+          const isDot = value > threshold
+
+          const color = isDot ? COLOR_DOT : COLOR_BG
+          data[idx]     = color[0]
+          data[idx + 1] = color[1]
+          data[idx + 2] = color[2]
+          data[idx + 3] = 255
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0)
+      animId = requestAnimationFrame(draw)
+    }
+
+    resize()
+    window.addEventListener('resize', resize)
+    animId = requestAnimationFrame(draw)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
 
   // ───────────────────────────────────────────────────────────────────────────
   // File Reading & Parsing Pipeline
@@ -158,7 +234,7 @@ export default function UploadScreen({ onDataReady }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="grain-overlay w-full h-full flex items-center justify-center relative"
+      className="grain-overlay w-full h-full flex items-center justify-center relative overflow-hidden"
       style={{
         background: `
           radial-gradient(ellipse 80% 60% at 10% 80%, rgba(61,120,80,0.08) 0%, transparent 60%),
@@ -167,6 +243,13 @@ export default function UploadScreen({ onDataReady }) {
         `,
       }}
     >
+      {/* Canvas animation background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full z-0"
+        style={{ opacity: 0.35, imageRendering: 'pixelated' }}
+      />
+
       {/* Centered content card */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}
