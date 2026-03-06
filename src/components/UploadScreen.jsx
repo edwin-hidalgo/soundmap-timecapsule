@@ -24,6 +24,40 @@ export default function UploadScreen({ onDataReady }) {
   const canvasRef = useRef(null)
   const waveCanvasRef = useRef(null)
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Spotify Streaming History Format Detection & Normalization
+  // ─────────────────────────────────────────────────────────────────────────
+  // Supports two formats:
+  // 1. Basic (StreamingHistory_music_*.json) — immediate, no country data
+  // 2. Extended (Streaming_History_Audio_*.json) — 5–30 days, full data
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Detect if entry is from Spotify's standard Account Data format
+   * (StreamingHistory_music_*.json, available immediately)
+   */
+  function isBasicEntry(entry) {
+    return 'endTime' in entry && 'msPlayed' in entry && !('ts' in entry)
+  }
+
+  /**
+   * Normalize basic format entry to extended format schema
+   * Allows both formats to be processed by the same parser
+   */
+  function normalizeBasicEntry(entry) {
+    // Convert "2025-03-04 08:26" to "2025-03-04T08:26:00Z"
+    const ts = entry.endTime.replace(' ', 'T') + ':00Z'
+    return {
+      ts,
+      ms_played: entry.msPlayed,
+      master_metadata_track_name: entry.trackName || null,
+      master_metadata_album_artist_name: entry.artistName || null,
+      master_metadata_album_album_name: null,
+      conn_country: 'US',  // not available in basic format — default to US
+      spotify_track_uri: `synthetic:${entry.artistName}:${entry.trackName}`,
+    }
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Canvas Dithering Animation — Forest Green Wave Dots
   // ───────────────────────────────────────────────────────────────────────────
@@ -198,17 +232,35 @@ export default function UploadScreen({ onDataReady }) {
         throw new Error('Files must contain Spotify streaming history arrays')
       }
 
-      // Validate: at least one entry looks like Spotify data
+      // Validate: at least one entry looks like Spotify data (basic or extended format)
       const sample = arrays.flat()[0]
-      if (!sample || !('ms_played' in sample)) {
+      if (!sample || (!('ms_played' in sample) && !('msPlayed' in sample))) {
         throw new Error('No Spotify streaming history found in these files')
       }
 
-      // Flatten arrays to get all raw entries
-      const allRawEntries = arrays.flat()
+      // Flatten and normalize all entries to extended format
+      const flat = arrays.flat()
+      const normalized = flat.map(e => isBasicEntry(e) ? normalizeBasicEntry(e) : e)
+
+      // Dedup cross-format: extended entries take priority over basic
+      // If same play appears in both standard and extended exports, keep extended
+      // Key: ts (minute-level), trackName, artistName
+      const extendedKeys = new Set()
+      for (const e of normalized) {
+        if (!e.spotify_track_uri?.startsWith('synthetic:')) {
+          extendedKeys.add(`${e.ts.substring(0, 16)}||${e.master_metadata_track_name}||${e.master_metadata_album_artist_name}`)
+        }
+      }
+      const deduped = normalized.filter(e => {
+        if (!e.spotify_track_uri?.startsWith('synthetic:')) return true // keep all extended
+        const key = `${e.ts.substring(0, 16)}||${e.master_metadata_track_name}||${e.master_metadata_album_artist_name}`
+        return !extendedKeys.has(key) // drop basic if extended version exists
+      })
+
+      const allRawEntries = deduped
 
       // Parse with data layer
-      const result = parseStreamingHistory(arrays)
+      const result = parseStreamingHistory([deduped])
 
       if (Object.keys(result).length === 0) {
         throw new Error(
@@ -365,7 +417,7 @@ export default function UploadScreen({ onDataReady }) {
                 <p className="font-mono text-xs text-text-secondary uppercase tracking-widest mt-0.5 sm:mt-1">OR_CLICK_TO_BROWSE</p>
               </div>
               <p className="font-mono text-xs text-text-secondary/60 mt-1 sm:mt-2 uppercase tracking-widest">
-                ACCEPTS: Streaming_History_Audio_*.json
+                ACCEPTS: StreamingHistory_music_*.json or Streaming_History_Audio_*.json
               </p>
             </motion.div>
             <input
@@ -463,20 +515,40 @@ export default function UploadScreen({ onDataReady }) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 transition={{ duration: 0.3 }}
-                className="mt-3 p-3 bg-surface/60 border border-border rounded text-sm text-text-secondary space-y-2"
+                className="mt-3 p-3 bg-surface/60 border border-border rounded space-y-3"
               >
-                <p>
-                  1. Go to <strong>Spotify Account</strong> → <strong>Privacy Settings</strong>
-                </p>
-                <p>
-                  2. Select <strong>"Request Data"</strong> → <strong>"Extended Streaming History"</strong>
-                </p>
-                <p>
-                  3. Download the ZIP file that arrives by email (can take 5–30 days)
-                </p>
-                <p className="text-xs text-text-secondary/60">
-                  Extract all JSON files and upload them here
-                </p>
+                {/* Option 1 — Standard (immediate) */}
+                <div>
+                  <p className="text-text-primary text-xs font-semibold mb-1">Option 1 — Standard History (available now)</p>
+                  <p className="text-xs text-text-secondary/80 mb-2">
+                    Files named: <span className="font-mono text-accent/80">StreamingHistory_music_*.json</span>
+                  </p>
+                  <ol className="text-xs text-text-secondary space-y-1 list-decimal list-inside">
+                    <li>Go to <strong>Spotify Account</strong> → <strong>Privacy Settings</strong></li>
+                    <li>Select <strong>"Request Data"</strong> → download immediately</li>
+                    <li>Extract the ZIP and upload the JSON files here</li>
+                  </ol>
+                  <p className="text-xs text-text-secondary/50 mt-1">Works for timeline, years, activity calendar. Map defaults to US.</p>
+                </div>
+
+                <div className="h-px bg-border/40" />
+
+                {/* Option 2 — Extended (full features) */}
+                <div>
+                  <p className="text-text-primary text-xs font-semibold mb-1">Option 2 — Extended History (full map features)</p>
+                  <p className="text-xs text-text-secondary/80 mb-2">
+                    Files named: <span className="font-mono text-accent/80">Streaming_History_Audio_*.json</span>
+                  </p>
+                  <ol className="text-xs text-text-secondary space-y-1 list-decimal list-inside">
+                    <li>Go to <strong>Spotify Account</strong> → <strong>Privacy Settings</strong></li>
+                    <li>Select <strong>"Request Data"</strong> → check <strong>"Extended Streaming History"</strong></li>
+                    <li>Wait for email (5–30 days), download the ZIP, upload all JSON files here</li>
+                  </ol>
+                  <p className="text-xs text-text-secondary/50 mt-1">Full geographic map with every country you've listened in.</p>
+                </div>
+
+                <div className="h-px bg-border/40" />
+                <p className="text-xs text-text-secondary/60">You can also upload both formats together — duplicates are handled automatically.</p>
               </motion.div>
             )}
           </motion.div>
