@@ -268,9 +268,14 @@ export default function UploadScreen({ onDataReady }) {
         )
       }
 
+      // Detect what format(s) were uploaded for UI/UX enhancements
+      const hasBasic = flat.some(e => isBasicEntry(e))
+      const hasExtended = flat.some(e => !isBasicEntry(e))
+      const dataFormat = hasBasic && hasExtended ? 'mixed' : hasBasic ? 'basic' : 'extended'
+
       // Success: call parent callback, App.jsx will trigger screen transition
-      // Pass both processed countryData and raw entries for timeline features
-      onDataReady(result, allRawEntries)
+      // Pass both processed countryData, raw entries, and format type
+      onDataReady(result, allRawEntries, dataFormat)
     } catch (err) {
       setError(err.message)
       setStatus('error')
@@ -330,8 +335,8 @@ export default function UploadScreen({ onDataReady }) {
         throw new Error('Failed to process demo data')
       }
 
-      // Pass both parsed country stats AND raw entries to app
-      onDataReady(countryData, entries)
+      // Pass both parsed country stats, raw entries, and format (demo is extended format)
+      onDataReady(countryData, entries, 'extended')
     } catch (err) {
       setError(err.message)
       setStatus('error')

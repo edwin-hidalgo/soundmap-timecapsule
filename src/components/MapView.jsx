@@ -31,10 +31,12 @@ export default function MapView({
   spotifyClientId,
   spotifyRedirectUri,
   onLogoutSpotify,
+  dataFormat,
 }) {
   const mapRef = useRef(null)
   const [selectedCountry, setSelectedCountry] = useState(null)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [geoBannerDismissed, setGeoBannerDismissed] = useState(false)
 
   // Compute max listening time for marker sizing
   const maxMs = Math.max(...Object.values(countryData).map((c) => c.totalMsPlayed), 0)
@@ -103,6 +105,25 @@ export default function MapView({
         onNavigateToTimeline={onNavigateToTimeline}
         onNavigateToActivity={onNavigateToActivity}
       />
+
+      {dataFormat === 'basic' && !geoBannerDismissed && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 w-full max-w-lg px-4">
+          <div className="flex items-start gap-3 p-3 bg-bg-primary/95 backdrop-blur border border-accent/20 rounded text-xs text-text-secondary shadow-lg">
+            <span className="text-accent flex-shrink-0 mt-0.5">◈</span>
+            <div className="flex-1 leading-relaxed">
+              <span className="text-text-primary font-medium">Standard Spotify history — geographic data unavailable. </span>
+              All plays are shown in United States. To see your real listening map,
+              request <strong>Extended Streaming History</strong> from Spotify Privacy Settings (takes 5–30 days).
+            </div>
+            <button
+              onClick={() => setGeoBannerDismissed(true)}
+              className="text-text-secondary/40 hover:text-text-secondary flex-shrink-0 transition-colors text-base leading-none mt-0.5"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <SpotifyConnectButton
         clientId={spotifyClientId}

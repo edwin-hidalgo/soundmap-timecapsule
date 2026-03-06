@@ -15,6 +15,7 @@ export default function App() {
   const [screen, setScreen] = useState('upload')
   const [countryData, setCountryData] = useState(null)
   const [allEntries, setAllEntries] = useState(null)
+  const [dataFormat, setDataFormat] = useState(null)
 
   // OAuth state
   const [spotifyToken, setSpotifyToken] = useState(null)
@@ -49,15 +50,17 @@ export default function App() {
     }
   }, [])
 
-  function handleDataReady(processedData, rawEntries) {
+  function handleDataReady(processedData, rawEntries, format) {
     setCountryData(processedData)
     setAllEntries(rawEntries)
+    setDataFormat(format)
     setScreen('map')
   }
 
   function handleReset() {
     setCountryData(null)
     setAllEntries(null)
+    setDataFormat(null)
     setScreen('upload')
   }
 
@@ -120,6 +123,7 @@ export default function App() {
             spotifyClientId={SPOTIFY_CLIENT_ID}
             spotifyRedirectUri={SPOTIFY_REDIRECT_URI}
             onLogoutSpotify={handleLogoutSpotify}
+            dataFormat={dataFormat}
           />
         )}
         {screen === 'timeline' && (
