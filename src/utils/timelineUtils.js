@@ -4,38 +4,83 @@
 
 /**
  * detectEras
- * Finds distinct "eras" in listening history using 6-month binning and artist composition clustering.
+ * Finds distinct "eras" in listening history using dynamic binning and artist composition clustering.
  *
  * Algorithm:
- * 1. Bin plays into 6-month periods (H1: Jan-Jun, H2: Jul-Dec)
- * 2. For each period, calculate top-5 artist composition
- * 3. Detect "shift points" where Jaccard similarity < 0.4 (significant taste shift)
- * 4. Group consecutive periods into rough eras
- * 5. MERGE short eras: any era < 18 months (< 3 bins) gets merged with most-similar neighbor
- * 6. Cap max eras at 6 (or floor(years/2))
- * 7. Enrich each era with: topArtists, topTracks, characterText, transitionNarrative
+ * 1. Filter to windowStart/windowEnd if provided; compute span in days
+ * 2. Dynamically size bins: target ~10 bins per window → binDays = Math.max(14, Math.round(spanDays / 10))
+ * 3. For each bin, calculate top-5 artist composition
+ * 4. Detect "shift points" where Jaccard similarity < 0.4 (significant taste shift)
+ * 5. Group consecutive periods into rough eras
+ * 6. MERGE short eras: any era < (spanDays/6) days gets merged with most-similar neighbor
+ * 7. Cap max eras at 6 (or floor(years/2))
+ * 8. Classify era type: obsession, exploration, rotation, artist
+ * 9. Enrich each era with: topArtists, topTracks, characterText, transitionNarrative, type
  *
- * Returns: Array<{ name, dateStart, dateEnd, durationMonths, topArtists, topTracks,
+ * Returns: Array<{ name, dateStart, dateEnd, durationMonths, durationDays, topArtists, topTracks,
  *           totalPlays, avgPlaysPerMonth, characterText, dominantArtist, dominantArtistShare,
- *           discoveryRate, transitionFrom, transitionTo }>
+ *           discoveryRate, transitionFrom, transitionTo, type }>
+ *
+ * windowStart, windowEnd: Optional Date objects or ISO strings to filter entries to a time window
  */
-export function detectEras(allEntries) {
+export function detectEras(allEntries, windowStart = null, windowEnd = null) {
   if (allEntries.length === 0) return []
 
-  // Step 1: Bin plays into 6-month periods (H1/H2)
-  const periodData = new Map() // "YYYY-H1/H2" -> { plays: [], artistCounts: Map }
+  // Step 0: Filter to window and compute span
+  let filtered = allEntries
+  let firstEntryDate, lastEntryDate
 
-  for (const entry of allEntries) {
+  if (windowStart || windowEnd) {
+    const wsDate = windowStart ? new Date(windowStart) : new Date(0)
+    const weDate = windowEnd ? new Date(windowEnd) : new Date()
+
+    filtered = allEntries.filter((e) => {
+      const t = new Date(e.ts)
+      return t >= wsDate && t <= weDate
+    })
+
+    if (filtered.length === 0) return []
+
+    firstEntryDate = new Date(filtered[0].ts)
+    lastEntryDate = new Date(filtered[0].ts)
+    for (const entry of filtered) {
+      const t = new Date(entry.ts)
+      if (t < firstEntryDate) firstEntryDate = t
+      if (t > lastEntryDate) lastEntryDate = t
+    }
+  } else {
+    firstEntryDate = new Date(allEntries[0].ts)
+    lastEntryDate = new Date(allEntries[0].ts)
+    for (const entry of allEntries) {
+      const t = new Date(entry.ts)
+      if (t < firstEntryDate) firstEntryDate = t
+      if (t > lastEntryDate) lastEntryDate = t
+    }
+  }
+
+  const spanDays = (lastEntryDate - firstEntryDate) / (1000 * 60 * 60 * 24)
+
+  // If window is too short, return empty (not enough signal)
+  if (spanDays < 60) return []
+
+  // Compute dynamic bin size: target ~10 bins across the span
+  const binDays = Math.max(14, Math.round(spanDays / 10))
+
+  // Step 1: Bin plays into dynamic periods
+  const periodData = new Map() // binIndex -> { plays: [], artistCounts: Map }
+
+  for (const entry of filtered) {
     const date = new Date(entry.ts)
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const half = month < 6 ? 'H1' : 'H2'
-    const periodKey = `${year}-${half}`
+    const dayOffset = (date - firstEntryDate) / (1000 * 60 * 60 * 24)
+    const binIndex = Math.floor(dayOffset / binDays)
+    const periodKey = `${binIndex}`
 
     if (!periodData.has(periodKey)) {
       periodData.set(periodKey, {
         plays: [],
         artistCounts: new Map(),
+        binIndex,
+        binStartDate: new Date(firstEntryDate.getTime() + binIndex * binDays * 24 * 60 * 60 * 1000),
       })
     }
 
@@ -46,7 +91,10 @@ export function detectEras(allEntries) {
     period.artistCounts.set(artist, (period.artistCounts.get(artist) || 0) + 1)
   }
 
-  const sortedPeriods = Array.from(periodData.keys()).sort()
+  const sortedPeriods = Array.from(periodData.keys())
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map(String)
 
   // Step 2: Calculate artist composition for each period (top 5 only for Jaccard)
   const periodVectors = new Map()
@@ -124,11 +172,13 @@ export function detectEras(allEntries) {
     })
   }
 
-  // Step 5: Merge short eras (< 3 bins = < 18 months) with most-similar neighbor
-  const mergedEras = mergeShortEras(roughEras, periodVectors, periodData)
+  // Step 5: Merge short eras dynamically based on window size
+  // Minimum era duration: window / 6 (want ~3-6 eras per view)
+  const minEraBins = Math.max(1, Math.round(sortedPeriods.length / 6))
+  const mergedEras = mergeShortEras(roughEras, periodVectors, periodData, minEraBins)
 
   // Step 6: Cap max eras at 6 or floor(years/2)
-  const yearsInHistory = sortedPeriods.length / 2 // 2 periods per year
+  const yearsInHistory = (spanDays / 365.25)
   const maxEras = Math.min(6, Math.max(2, Math.floor(yearsInHistory / 2)))
 
   let finalEras = mergedEras
@@ -156,6 +206,28 @@ export function detectEras(allEntries) {
 
   // Step 6b: Merge consecutive eras with the same dominant artist
   finalEras = mergeSameDominantArtistEras(finalEras, periodVectors, periodData)
+
+  // Step 6c: Compute user's baseline concentration (for era type classification)
+  let userTotalArtistPlays = 0
+  let userUniqueArtists = 0
+  const userArtistCounts = new Map()
+  for (const entry of filtered) {
+    const artist = entry.master_metadata_album_artist_name
+    if (artist) {
+      userArtistCounts.set(artist, (userArtistCounts.get(artist) || 0) + 1)
+      userTotalArtistPlays += 1
+    }
+  }
+  userUniqueArtists = userArtistCounts.size
+  const topUserArtists = Array.from(userArtistCounts.values())
+    .sort((a, b) => b - a)
+    .slice(0, 10)
+  const userBaselineConcentration = topUserArtists.reduce((a, b) => a + b, 0) / userTotalArtistPlays
+  const userAvgDiscovery =
+    finalEras.length > 0
+      ? finalEras.reduce((sum, era) => sum + (periodVectors.get(era.periodRange[0])?.newArtists.size || 0), 0) /
+        finalEras.length
+      : 0
 
   // Step 7: Build enriched era objects
   const eraList = []
@@ -231,9 +303,22 @@ export function detectEras(allEntries) {
     const durationMonths = safePeriodLength * 6
     const avgPlaysPerMonth = Math.round(totalPlayCount / durationMonths)
 
-    // Era name: "The [Artist] Years" or similar
+    // Era type classification
+    const eraType = classifyEraType(
+      {
+        dominantArtistShare,
+        discoveryRate,
+        topArtists: topArtistsInEra.map((a) => a.artist),
+        periodRange,
+      },
+      userBaselineConcentration,
+      userAvgDiscovery,
+      periodVectors
+    )
+
+    // Era name: use type-aware naming
     const eraNumber = eraIdx + 1
-    const name = buildEraName(dominantArtist, eraNumber, periodRange.length)
+    const name = buildEraName(dominantArtist, eraNumber, periodRange.length, eraType)
 
     // Transition narratives
     let transitionFrom = null
@@ -289,17 +374,21 @@ export function detectEras(allEntries) {
       periodRange.length
     )
 
-    // Format dates
-    const [startYear, startHalf] = periodRange[0].split('-')
-    const [endYear, endHalf] = periodRange[periodRange.length - 1].split('-')
-    const startMonth = startHalf === 'H1' ? '01' : '07'
-    const endMonth = endHalf === 'H1' ? '06' : '12'
+    // Format dates from actual entry dates
+    let eraStartDateStr = ''
+    let eraEndDateStr = ''
+    if (eraStartDate) {
+      const pad = (n) => String(n).padStart(2, '0')
+      eraStartDateStr = `${eraStartDate.getFullYear()}-${pad(eraStartDate.getMonth() + 1)}`
+      eraEndDateStr = `${eraEndDate.getFullYear()}-${pad(eraEndDate.getMonth() + 1)}`
+    }
 
     eraList.push({
       name,
-      dateStart: `${startYear}-${startMonth}`,
-      dateEnd: `${endYear}-${endMonth}`,
+      dateStart: eraStartDateStr,
+      dateEnd: eraEndDateStr,
       durationMonths,
+      durationDays: (eraEndDate - eraStartDate) / (1000 * 60 * 60 * 24),
       topArtists: topArtistsInEra.map((a) => a.artist),
       topTracks: topTracksInEra,
       totalPlays: totalPlayCount,
@@ -310,6 +399,7 @@ export function detectEras(allEntries) {
       discoveryRate,
       transitionFrom,
       transitionTo,
+      type: eraType,
     })
   }
 
@@ -318,9 +408,9 @@ export function detectEras(allEntries) {
 
 /**
  * mergeShortEras
- * Merges eras that are < 3 bins (18 months) with their most-similar neighbor.
+ * Merges eras that are shorter than minEraBins with their most-similar neighbor.
  */
-function mergeShortEras(roughEras, periodVectors, periodData) {
+function mergeShortEras(roughEras, periodVectors, periodData, minEraBins = 3) {
   const result = [...roughEras]
   let changed = true
 
@@ -329,7 +419,7 @@ function mergeShortEras(roughEras, periodVectors, periodData) {
 
     for (let i = 0; i < result.length; i++) {
       const era = result[i]
-      if (era.periodRange.length >= 3) continue // Skip eras >= 18 months
+      if (era.periodRange.length >= minEraBins) continue // Skip eras >= minimum bins
 
       // Find most-similar neighbor
       let bestNeighborIdx = -1
@@ -469,11 +559,62 @@ function computeEraSimilarity(eraAKey, eraBKey, periodVectors) {
 
 /**
  * buildEraName
- * Generates a human-friendly era name.
+ * Generates a human-friendly era name based on era type and dominant artist.
  */
-function buildEraName(dominantArtist, eraNumber, numPeriods) {
-  // "[Artist] Era" format for all eras
-  return `${dominantArtist} Era`
+function buildEraName(dominantArtist, eraNumber, numPeriods, eraType = 'artist') {
+  // Type-aware naming
+  switch (eraType) {
+    case 'obsession':
+      return `The ${dominantArtist} Obsession`
+    case 'exploration':
+      return 'Exploration Era'
+    case 'rotation':
+      // For rotation, use top artist + era number to avoid duplication
+      return `${dominantArtist} & Rotation Era`
+    case 'artist':
+    default:
+      return `${dominantArtist} Era`
+  }
+}
+
+/**
+ * classifyEraType
+ * Classifies an era as 'obsession', 'exploration', 'rotation', or 'artist' based on artist concentration patterns.
+ */
+function classifyEraType(era, userBaselineConcentration, userAvgDiscovery, periodVectors) {
+  // Collect metrics for this era
+  const domPcts = era.periodRange.map((k) => {
+    const vector = periodVectors.get(k)
+    return vector ? vector.dominantPercentage : 0
+  })
+  const avgDomPct = domPcts.reduce((a, b) => a + b, 0) / Math.max(1, domPcts.length)
+
+  // Collect discovery rates for this era
+  const eraDiscoveries = era.periodRange.map((k) => {
+    const vector = periodVectors.get(k)
+    return vector ? vector.newArtists.size : 0
+  })
+  const eraAvgDiscovery = eraDiscoveries.reduce((a, b) => a + b, 0) / Math.max(1, eraDiscoveries.length)
+
+  // Classification logic
+  if (avgDomPct > userBaselineConcentration * 2.5) {
+    return 'obsession' // single artist dominates significantly more than user's baseline
+  }
+
+  if (eraAvgDiscovery > userAvgDiscovery * 1.5 && avgDomPct < userBaselineConcentration * 0.8) {
+    return 'exploration' // high discovery + low concentration = exploration phase
+  }
+
+  if (
+    era.topArtists.length >= 3 &&
+    era.topArtists.length <= 5 &&
+    avgDomPct >= userBaselineConcentration * 0.8 &&
+    avgDomPct <= userBaselineConcentration * 1.3
+  ) {
+    return 'rotation' // 3-5 artists, concentration near baseline
+  }
+
+  return 'artist' // default: dominant artist defines the era
 }
 
 /**

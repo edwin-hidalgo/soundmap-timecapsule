@@ -22,13 +22,100 @@ export default function TimelineView({ allEntries, onBack }) {
   const [expandedEra, setExpandedEra] = useState(null)
   const [timeWindow, setTimeWindow] = useState(Infinity) // days: 30, 90, 180, 365, 1095, Infinity. Default to all-time for time capsule app
 
-  // Filter entries by time window
+  // Compute history span and derive shown window options dynamically
+  const { historySpanDays, shownWindowOptions, windowStart, windowEnd } = useMemo(() => {
+    if (allEntries.length === 0) {
+      return {
+        historySpanDays: 0,
+        shownWindowOptions: [],
+        windowStart: null,
+        windowEnd: null,
+      }
+    }
+
+    // Compute history span
+    let firstEntry = allEntries[0]
+    let lastEntry = allEntries[0]
+    for (const entry of allEntries) {
+      const t = new Date(entry.ts)
+      const firstT = new Date(firstEntry.ts)
+      const lastT = new Date(lastEntry.ts)
+      if (t < firstT) firstEntry = entry
+      if (t > lastT) lastEntry = entry
+    }
+
+    const historySpan = new Date(lastEntry.ts) - new Date(firstEntry.ts)
+    const historySpanDays = historySpan / (1000 * 60 * 60 * 24)
+
+    // Define all possible window options
+    const allWindowOptions = [
+      { label: 'Last 30 days', days: 30 },
+      { label: 'Last 3 months', days: 90 },
+      { label: 'Last 6 months', days: 180 },
+      { label: 'Last 12 months', days: 365 },
+      { label: 'Last 3 years', days: 1095 },
+      { label: 'Last 5 years', days: 1825 },
+      { label: 'Last 8 years', days: 2920 },
+    ]
+
+    // Show options that cover <= 80% of user's total history span
+    const shownOptions = allWindowOptions.filter((w) => w.days < historySpanDays * 0.8)
+
+    // Always add All-time, with date range
+    const firstDate = new Date(firstEntry.ts)
+    const lastDate = new Date(lastEntry.ts)
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ]
+    const formatDate = (d) =>
+      `${monthNames[d.getMonth()]} ${d.getFullYear()}`
+    const allTimeLabel = `All-time · ${formatDate(firstDate)}–${formatDate(lastDate)}`
+    shownOptions.push({ label: allTimeLabel, days: Infinity })
+
+    // Compute windowStart and windowEnd for current timeWindow
+    let wsDate = null
+    let weDate = null
+
+    if (timeWindow !== Infinity) {
+      const now = new Date()
+      weDate = new Date(now)
+      wsDate = new Date(now.getTime() - timeWindow * 24 * 60 * 60 * 1000)
+    }
+
+    return {
+      historySpanDays,
+      shownWindowOptions: shownOptions,
+      windowStart: wsDate,
+      windowEnd: weDate,
+    }
+  }, [allEntries, timeWindow])
+
+  // Filter entries by time window (legacy, kept for taste passport)
   const windowedEntries = useMemo(() => {
     return filterEntriesByWindow(allEntries, timeWindow)
   }, [allEntries, timeWindow])
 
-  // Compute eras from windowed entries
-  const eras = useMemo(() => detectEras(windowedEntries), [windowedEntries])
+  // Compute eras from windowed entries with window-aware detection
+  const eras = useMemo(() => {
+    if (timeWindow === Infinity) {
+      // All-time: no window filter
+      return detectEras(allEntries)
+    } else {
+      // Windowed: pass explicit dates
+      return detectEras(allEntries, windowStart, windowEnd)
+    }
+  }, [allEntries, timeWindow, windowStart, windowEnd])
 
   // Get available years from ALL entries (Year Review is not windowed — it's a full-year view)
   const availableYears = useMemo(() => {
@@ -65,16 +152,6 @@ export default function TimelineView({ allEntries, onBack }) {
 
   // Compute taste passport from windowed entries
   const tastePassport = useMemo(() => computeTastePassport(windowedEntries), [windowedEntries])
-
-  // Time window options
-  const windowOptions = [
-    { label: 'Last 30 days', days: 30 },
-    { label: 'Last 3 months', days: 90 },
-    { label: 'Last 6 months', days: 180 },
-    { label: 'Last 12 months', days: 365 },
-    { label: 'Last 3 years', days: 1095 },
-    { label: 'All-time', days: Infinity },
-  ]
 
   const monthNames = [
     'Jan',
@@ -120,9 +197,9 @@ export default function TimelineView({ allEntries, onBack }) {
         </div>
 
         {/* Time Window Selector — only show on tabs that respond to window changes */}
-        {allEntries.length > 0 && (tab === 'eras' || tab === 'passport') && (
+        {allEntries.length > 0 && (tab === 'eras' || tab === 'passport') && shownWindowOptions.length > 0 && (
           <div className="flex gap-2 flex-wrap justify-end">
-            {windowOptions.map((option) => (
+            {shownWindowOptions.map((option) => (
               <button
                 key={option.days}
                 onClick={() => setTimeWindow(option.days)}
@@ -187,7 +264,13 @@ export default function TimelineView({ allEntries, onBack }) {
         {/* ERAS TAB */}
         {allEntries.length > 0 && tab === 'eras' && (
           <div>
-            {eras.length === 0 ? (
+            {historySpanDays < 60 ? (
+              <p className="text-text-secondary text-center py-8">
+                Not enough listening data in this window to detect musical eras.
+                <br />
+                Try selecting a longer time window.
+              </p>
+            ) : eras.length === 0 ? (
               <p className="text-text-secondary text-center py-8">
                 No distinct musical eras detected. Try selecting "All-time" to see your full history.
               </p>
@@ -213,9 +296,16 @@ export default function TimelineView({ allEntries, onBack }) {
                       {/* Era header */}
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-serif text-xl text-text-primary mb-1">{era.name}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-serif text-xl text-text-primary">{era.name}</h3>
+                            {era.type && era.type !== 'artist' && (
+                              <span className="px-2 py-0.5 rounded text-xs bg-accent/20 text-accent font-medium">
+                                {era.type}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-text-secondary text-sm">
-                            {formatEraDate(era.dateStart)} — {formatEraDate(era.dateEnd)} · {Math.round(era.durationMonths / 12)} years
+                            {formatEraDate(era.dateStart)} — {formatEraDate(era.dateEnd)} · {historySpanDays < 180 ? 'Phase' : Math.round(era.durationMonths / 12) + ' years'}
                           </p>
                           <p className="text-text-secondary text-xs mt-2">{era.characterText}</p>
                         </div>
