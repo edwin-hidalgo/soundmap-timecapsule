@@ -313,29 +313,46 @@ export default function UploadScreen({ onDataReady }) {
   // ───────────────────────────────────────────────────────────────────────────
   // Demo Handler
   // ───────────────────────────────────────────────────────────────────────────
+  // Loads pre-computed demoCountryData.json (fast, small) in parallel with
+  // demoEntries.json (shortened field names). Expands field names back to
+  // full Spotify format for downstream compatibility.
   async function handleDemo() {
     setStatus('processing')
     setError(null)
 
     try {
-      // Fetch real demo data (2019-2025 sample of Edwin's history)
-      const res = await fetch('/demoEntries.json')
-      if (!res.ok) {
+      // Fetch both files in parallel for speed
+      const [countryRes, entriesRes] = await Promise.all([
+        fetch('/demoCountryData.json'),
+        fetch('/demoEntries.json'),
+      ])
+
+      if (!countryRes.ok || !entriesRes.ok) {
         throw new Error('Demo data unavailable. Please try uploading your own data.')
       }
 
-      const entries = await res.json()
-      if (!Array.isArray(entries) || entries.length === 0) {
+      const [countryData, shortEntries] = await Promise.all([
+        countryRes.json(),
+        entriesRes.json(),
+      ])
+
+      if (Object.keys(countryData).length === 0 || !Array.isArray(shortEntries) || shortEntries.length === 0) {
         throw new Error('No demo data found')
       }
 
-      // Parse the demo entries through the same pipeline as uploaded files
-      const countryData = parseStreamingHistory([entries])
-      if (Object.keys(countryData).length === 0) {
-        throw new Error('Failed to process demo data')
-      }
+      // Expand short field names back to Spotify format for downstream compatibility
+      // Field name mapping: ts→ts, ms→ms_played, cc→conn_country, t→master_metadata_track_name, etc.
+      const entries = shortEntries.map((e) => ({
+        ts: e.ts,
+        ms_played: e.ms,
+        conn_country: e.cc,
+        master_metadata_track_name: e.t,
+        master_metadata_album_artist_name: e.ar,
+        master_metadata_album_album_name: e.al,
+        spotify_track_uri: e.uri,
+      }))
 
-      // Pass both parsed country stats, raw entries, and format (demo is extended format)
+      // Pass both parsed country stats, expanded raw entries, and format (demo is extended format)
       onDataReady(countryData, entries, 'extended')
     } catch (err) {
       setError(err.message)
