@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { parseStreamingHistory } from '../utils/parseStreamingHistory.js'
 // Note: demoData.js is superseded by demoEntries.json (fetched and parsed dynamically)
+// Note: parseStreamingHistory + full processing pipeline runs in uploadWorker.js (Web Worker)
 
 /**
  * UploadScreen — Screen 1: File upload & demo entry point
@@ -23,40 +23,6 @@ export default function UploadScreen({ onDataReady }) {
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
   const waveCanvasRef = useRef(null)
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Spotify Streaming History Format Detection & Normalization
-  // ─────────────────────────────────────────────────────────────────────────
-  // Supports two formats:
-  // 1. Basic (StreamingHistory_music_*.json) — immediate, no country data
-  // 2. Extended (Streaming_History_Audio_*.json) — 5–30 days, full data
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Detect if entry is from Spotify's standard Account Data format
-   * (StreamingHistory_music_*.json, available immediately)
-   */
-  function isBasicEntry(entry) {
-    return 'endTime' in entry && 'msPlayed' in entry && !('ts' in entry)
-  }
-
-  /**
-   * Normalize basic format entry to extended format schema
-   * Allows both formats to be processed by the same parser
-   */
-  function normalizeBasicEntry(entry) {
-    // Convert "2025-03-04 08:26" to "2025-03-04T08:26:00Z"
-    const ts = entry.endTime.replace(' ', 'T') + ':00Z'
-    return {
-      ts,
-      ms_played: entry.msPlayed,
-      master_metadata_track_name: entry.trackName || null,
-      master_metadata_album_artist_name: entry.artistName || null,
-      master_metadata_album_album_name: null,
-      conn_country: 'US',  // not available in basic format — default to US
-      spotify_track_uri: `synthetic:${entry.artistName}:${entry.trackName}`,
-    }
-  }
 
   // ───────────────────────────────────────────────────────────────────────────
   // Canvas Dithering Animation — Forest Green Wave Dots
@@ -196,86 +162,59 @@ export default function UploadScreen({ onDataReady }) {
 
   // ───────────────────────────────────────────────────────────────────────────
   // File Reading & Parsing Pipeline
+  // Reads files as raw text strings on main thread (async/non-blocking),
+  // then offloads all CPU-heavy work to uploadWorker.js via Web Worker.
+  // This keeps the upload spinner animated even for 300k+ entry datasets.
   // ───────────────────────────────────────────────────────────────────────────
   async function handleFiles(fileList) {
     setStatus('processing')
     setError(null)
 
     try {
-      // Read all files in parallel using FileReader
-      const arrays = await Promise.all(
-        Array.from(fileList).map(
+      // Step 1: Read all files as text strings in parallel (non-blocking)
+      const fileArray = Array.from(fileList)
+      const fileContents = await Promise.all(
+        fileArray.map(
           (file) =>
             new Promise((resolve, reject) => {
               const reader = new FileReader()
-
-              reader.onload = (e) => {
-                try {
-                  const parsed = JSON.parse(e.target.result)
-                  resolve(parsed)
-                } catch {
-                  reject(new Error(`"${file.name}" is not valid JSON`))
-                }
-              }
-
-              reader.onerror = () => {
-                reject(new Error(`Could not read "${file.name}"`))
-              }
-
+              reader.onload = (e) => resolve(e.target.result)
+              reader.onerror = () => reject(new Error(`Could not read "${file.name}"`))
               reader.readAsText(file)
             })
         )
       )
+      const fileNames = fileArray.map((f) => f.name)
 
-      // Validate: each parsed result must be an array
-      if (!arrays.every(Array.isArray)) {
-        throw new Error('Files must contain Spotify streaming history arrays')
-      }
+      // Step 2: Spawn Web Worker for all CPU-heavy processing
+      // (JSON.parse + normalize + dedup + parseStreamingHistory)
+      const worker = new Worker(
+        new URL('../workers/uploadWorker.js', import.meta.url),
+        { type: 'module' }
+      )
 
-      // Validate: at least one entry looks like Spotify data (basic or extended format)
-      const sample = arrays.flat()[0]
-      if (!sample || (!('ms_played' in sample) && !('msPlayed' in sample))) {
-        throw new Error('No Spotify streaming history found in these files')
-      }
+      const t0 = performance.now()
 
-      // Flatten and normalize all entries to extended format
-      const flat = arrays.flat()
-      const normalized = flat.map(e => isBasicEntry(e) ? normalizeBasicEntry(e) : e)
-
-      // Dedup cross-format: extended entries take priority over basic
-      // If same play appears in both standard and extended exports, keep extended
-      // Key: ts (minute-level), trackName, artistName
-      const extendedKeys = new Set()
-      for (const e of normalized) {
-        if (!e.spotify_track_uri?.startsWith('synthetic:')) {
-          extendedKeys.add(`${e.ts.substring(0, 16)}||${e.master_metadata_track_name}||${e.master_metadata_album_artist_name}`)
+      worker.onmessage = (e) => {
+        console.log(`[upload] worker round-trip: ${(performance.now() - t0).toFixed(0)}ms`)
+        worker.terminate()
+        const { success, countryData, entries, dataFormat, error } = e.data
+        if (!success) {
+          setError(error)
+          setStatus('error')
+          return
         }
-      }
-      const deduped = normalized.filter(e => {
-        if (!e.spotify_track_uri?.startsWith('synthetic:')) return true // keep all extended
-        const key = `${e.ts.substring(0, 16)}||${e.master_metadata_track_name}||${e.master_metadata_album_artist_name}`
-        return !extendedKeys.has(key) // drop basic if extended version exists
-      })
-
-      const allRawEntries = deduped
-
-      // Parse with data layer
-      const result = parseStreamingHistory([deduped])
-
-      if (Object.keys(result).length === 0) {
-        throw new Error(
-          'No music plays found after filtering (need >30s plays from known countries)'
-        )
+        onDataReady(countryData, entries, dataFormat)
       }
 
-      // Detect what format(s) were uploaded for UI/UX enhancements
-      const hasBasic = flat.some(e => isBasicEntry(e))
-      const hasExtended = flat.some(e => !isBasicEntry(e))
-      const dataFormat = hasBasic && hasExtended ? 'mixed' : hasBasic ? 'basic' : 'extended'
+      worker.onerror = (e) => {
+        worker.terminate()
+        setError('Processing failed: ' + (e.message || 'Unknown error'))
+        setStatus('error')
+      }
 
-      // Success: call parent callback, App.jsx will trigger screen transition
-      // Pass both processed countryData, raw entries, and format type
-      onDataReady(result, allRawEntries, dataFormat)
+      // Send raw text strings to worker — status stays 'processing' until response
+      worker.postMessage({ fileContents, fileNames })
     } catch (err) {
       setError(err.message)
       setStatus('error')
