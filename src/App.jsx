@@ -7,6 +7,7 @@ import ActivityCalendar from './components/ActivityCalendar.jsx'
 import BroadcastScreen from './components/BroadcastScreen.jsx'
 import TasteSnapshot from './components/TasteSnapshot.jsx'
 import ArtistExploration from './components/ArtistExploration.jsx'
+import HubScreen from './components/HubScreen.jsx'
 import OAuthCallback from './components/OAuthCallback.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { getCurrentUser } from './utils/spotifyAPI.js'
@@ -27,6 +28,7 @@ export default function App() {
   const [spotifyUser, setSpotifyUser] = useState(null)
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [shouldNavigateToBroadcast, setShouldNavigateToBroadcast] = useState(false)
+  const [shouldNavigateToHub, setShouldNavigateToHub] = useState(false)
 
   // Load OAuth state on mount
   useEffect(() => {
@@ -52,6 +54,10 @@ export default function App() {
               const user = await getCurrentUser(token.accessToken)
               if (user) {
                 setSpotifyUser(user)
+                // If user has Spotify but no uploaded data, show hub
+                if (!countryData) {
+                  setScreen('hub')
+                }
               }
             } catch (err) {
               console.error('Failed to fetch user from saved token:', err)
@@ -70,13 +76,17 @@ export default function App() {
     initializeAuth()
   }, [])
 
-  // Navigate to broadcast screen after OAuth if requested
+  // Navigate after OAuth if requested
   useEffect(() => {
     if (shouldNavigateToBroadcast && spotifyUser) {
       setScreen('broadcast')
       setShouldNavigateToBroadcast(false)
     }
-  }, [shouldNavigateToBroadcast, spotifyUser])
+    if (shouldNavigateToHub && spotifyUser) {
+      setScreen('hub')
+      setShouldNavigateToHub(false)
+    }
+  }, [shouldNavigateToBroadcast, shouldNavigateToHub, spotifyUser])
 
   function handleDataReady(processedData, rawEntries, format) {
     setCountryData(processedData)
@@ -116,16 +126,39 @@ export default function App() {
     setScreen('exploration')
   }
 
+  function handleNavigateToHub() {
+    setScreen('hub')
+  }
+
+  function handleNavigateToUpload() {
+    setScreen('upload')
+  }
+
+  // Back handler — goes to map if data loaded, hub if OAuth-only
+  function handleBackToHome() {
+    if (countryData) {
+      setScreen('map')
+    } else if (spotifyUser) {
+      setScreen('hub')
+    } else {
+      setScreen('upload')
+    }
+  }
+
   async function handleSpotifyTokenReceived(token) {
     // Save token to localStorage
     localStorage.setItem('spotify_token', JSON.stringify(token))
     setSpotifyToken(token)
 
-    // Check if we should navigate to broadcast (from UploadScreen "Try Live" button)
+    // Check navigation flags set before OAuth redirect
     const wantsBroadcast = sessionStorage.getItem('navigate_to_broadcast')
+    const wantsHub = sessionStorage.getItem('navigate_to_hub')
     if (wantsBroadcast) {
       sessionStorage.removeItem('navigate_to_broadcast')
       setShouldNavigateToBroadcast(true)
+    } else if (wantsHub) {
+      sessionStorage.removeItem('navigate_to_hub')
+      setShouldNavigateToHub(true)
     }
 
     // Fetch user profile from Spotify API
@@ -159,6 +192,9 @@ export default function App() {
     localStorage.removeItem('spotify_token')
     setSpotifyToken(null)
     setSpotifyUser(null)
+    if (!countryData) {
+      setScreen('upload')
+    }
   }
 
   // If this is an OAuth callback, show the callback component
@@ -218,12 +254,23 @@ export default function App() {
             onBack={handleNavigateToMap}
           />
         )}
+        {screen === 'hub' && (
+          <HubScreen
+            key="hub"
+            spotifyUser={spotifyUser}
+            onNavigateToTasteSnapshot={handleNavigateToTasteSnapshot}
+            onNavigateToExploration={handleNavigateToExploration}
+            onNavigateToBroadcast={handleNavigateToBroadcast}
+            onNavigateToUpload={handleNavigateToUpload}
+            onLogoutSpotify={handleLogoutSpotify}
+          />
+        )}
         {screen === 'broadcast' && (
           <BroadcastScreen
             key="broadcast"
             spotifyToken={spotifyToken}
             spotifyUser={spotifyUser}
-            onBack={handleNavigateToMap}
+            onBack={handleBackToHome}
             onNavigateToBroadcast={handleNavigateToBroadcast}
           />
         )}
@@ -232,7 +279,7 @@ export default function App() {
             key="taste-snapshot"
             spotifyToken={spotifyToken}
             allEntries={allEntries}
-            onBack={handleNavigateToMap}
+            onBack={handleBackToHome}
           />
         )}
         {screen === 'exploration' && (
@@ -240,7 +287,7 @@ export default function App() {
             key="exploration"
             spotifyToken={spotifyToken}
             allEntries={allEntries}
-            onBack={handleNavigateToMap}
+            onBack={handleBackToHome}
           />
         )}
       </AnimatePresence>

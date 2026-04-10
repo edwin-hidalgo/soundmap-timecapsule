@@ -260,20 +260,19 @@ export default function UploadScreen({
   // ───────────────────────────────────────────────────────────────────────────
   // Try Live Broadcasts Handler
   // ───────────────────────────────────────────────────────────────────────────
-  async function handleTryLiveBroadcasts() {
+  async function handleConnectSpotify() {
     if (!spotifyClientId || !spotifyRedirectUri) {
       alert('Spotify configuration not available. Please check your environment variables.')
       return
     }
 
-    // Set flag in sessionStorage to navigate to broadcast after OAuth completes
-    sessionStorage.setItem('navigate_to_broadcast', 'true')
+    // Set flag in sessionStorage to navigate to hub after OAuth completes
+    sessionStorage.setItem('navigate_to_hub', 'true')
 
     // Import and use the Spotify auth utility
     const { generateAuthUrl } = await import('../utils/spotifyAuth.js')
     const authUrl = await generateAuthUrl(spotifyClientId, spotifyRedirectUri)
     window.location.href = authUrl
-    // After OAuth callback, the app will navigate to broadcast screen via App.jsx
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -482,7 +481,7 @@ export default function UploadScreen({
           </motion.button>
         )}
 
-        {/* Try Live Broadcasts Button */}
+        {/* Connect Spotify Button */}
         {status === 'idle' && (
           <motion.button
             initial={{ opacity: 0 }}
@@ -490,10 +489,10 @@ export default function UploadScreen({
             transition={{ delay: 0.4, duration: 0.4 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleTryLiveBroadcasts}
-            className="px-6 py-3 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50 font-mono text-xs uppercase tracking-widest transition-all"
+            onClick={handleConnectSpotify}
+            className="px-6 py-3 bg-accent/10 hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
           >
-            🎬 [ MAIN_CHARACTER_MODE ]  →
+            [ CONNECT_SPOTIFY ]  →
           </motion.button>
         )}
 
