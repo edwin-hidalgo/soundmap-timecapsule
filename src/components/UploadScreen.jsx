@@ -452,33 +452,40 @@ export default function UploadScreen({
           </motion.div>
         )}
 
-        {/* Separator */}
+        {/* Try Demo Button — grouped with upload since both unlock map/timeline */}
         {status === 'idle' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.4 }}
+            className="flex flex-col items-center gap-1"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleDemo}
+              className="px-6 py-3 bg-transparent hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
+            >
+              [ TRY_DEMO ]  →
+            </motion.button>
+            <p className="text-[10px] text-text-muted">
+              No data? Explore with sample listening history
+            </p>
+          </motion.div>
+        )}
+
+        {/* Separator */}
+        {status === 'idle' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
             className="flex items-center gap-3 w-full"
           >
             <div className="flex-1 h-px bg-text-secondary/20" />
             <span className="font-mono text-text-secondary/60 text-xs uppercase tracking-widest">// OR //</span>
             <div className="flex-1 h-px bg-text-secondary/20" />
           </motion.div>
-        )}
-
-        {/* Try Demo Button */}
-        {status === 'idle' && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.35, duration: 0.4 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleDemo}
-            className="px-6 py-3 bg-transparent hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
-          >
-            [ TRY_DEMO ]  →
-          </motion.button>
         )}
 
         {/* Connect Spotify Button */}
@@ -498,7 +505,7 @@ export default function UploadScreen({
               [ CONNECT_SPOTIFY ]  →
             </motion.button>
             <p className="text-[10px] text-text-muted text-center max-w-xs">
-              Currently in beta — Spotify access requires approval. Reach out to get whitelisted.
+              Unlock taste snapshots, artist exploration, and live features. Currently in beta — reach out to get whitelisted.
             </p>
           </motion.div>
         )}
