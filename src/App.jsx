@@ -134,6 +134,35 @@ export default function App() {
     setScreen('upload')
   }
 
+  async function handleLoadDemo() {
+    try {
+      const [countryRes, entriesRes] = await Promise.all([
+        fetch('/demoCountryData.json'),
+        fetch('/demoEntries.json'),
+      ])
+      if (!countryRes.ok || !entriesRes.ok) throw new Error('Demo data unavailable')
+      const [demoCountry, shortEntries] = await Promise.all([
+        countryRes.json(),
+        entriesRes.json(),
+      ])
+      const entries = shortEntries.map((e) => ({
+        ts: e.ts,
+        ms_played: e.ms,
+        conn_country: e.cc,
+        master_metadata_track_name: e.t,
+        master_metadata_album_artist_name: e.ar,
+        master_metadata_album_album_name: e.al,
+        spotify_track_uri: e.uri,
+      }))
+      setCountryData(demoCountry)
+      setAllEntries(entries)
+      setDataFormat('extended')
+      setScreen('map')
+    } catch (err) {
+      console.error('Failed to load demo data:', err)
+    }
+  }
+
   // Back handler — goes to map if data loaded, hub if OAuth-only
   function handleBackToHome() {
     if (countryData) {
@@ -262,6 +291,7 @@ export default function App() {
             onNavigateToExploration={handleNavigateToExploration}
             onNavigateToBroadcast={handleNavigateToBroadcast}
             onNavigateToUpload={handleNavigateToUpload}
+            onLoadDemo={handleLoadDemo}
             onLogoutSpotify={handleLogoutSpotify}
           />
         )}

@@ -11,6 +11,7 @@ export default function HubScreen({
   onNavigateToExploration,
   onNavigateToBroadcast,
   onNavigateToUpload,
+  onLoadDemo,
   onLogoutSpotify,
 }) {
   const features = [
@@ -99,14 +100,22 @@ export default function HubScreen({
             <div className="flex-1 h-px bg-text-secondary/20" />
           </div>
 
-          <button
-            onClick={onNavigateToUpload}
-            className="px-5 py-2.5 bg-transparent hover:bg-accent/10 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
-          >
-            [ UPLOAD_SPOTIFY_HISTORY ] →
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <button
+              onClick={onLoadDemo}
+              className="px-5 py-2.5 bg-accent/10 hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
+            >
+              [ TRY_DEMO ] →
+            </button>
+            <button
+              onClick={onNavigateToUpload}
+              className="px-5 py-2.5 bg-transparent hover:bg-accent/10 text-text-secondary border border-border font-mono text-xs uppercase tracking-widest transition-all"
+            >
+              [ UPLOAD_YOUR_DATA ] →
+            </button>
+          </div>
           <p className="text-[10px] text-text-muted">
-            Upload your streaming history for full map, timeline, activity calendar, and deeper exploration data
+            Explore the full map, timeline, and activity calendar with demo data — or upload your own Spotify streaming history
           </p>
         </motion.div>
 

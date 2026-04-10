@@ -483,17 +483,24 @@ export default function UploadScreen({
 
         {/* Connect Spotify Button */}
         {status === 'idle' && (
-          <motion.button
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.4 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleConnectSpotify}
-            className="px-6 py-3 bg-accent/10 hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
+            className="flex flex-col items-center gap-2"
           >
-            [ CONNECT_SPOTIFY ]  →
-          </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleConnectSpotify}
+              className="px-6 py-3 bg-accent/10 hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
+            >
+              [ CONNECT_SPOTIFY ]  →
+            </motion.button>
+            <p className="text-[10px] text-text-muted text-center max-w-xs">
+              Currently in beta — Spotify access requires approval. Reach out to get whitelisted.
+            </p>
+          </motion.div>
         )}
 
         {/* Expandable Info */}
