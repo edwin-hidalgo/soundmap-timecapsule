@@ -10,7 +10,16 @@ import { formatListeningHours, formatDateRange } from '../utils/formatters.js'
  *   onNavigateToTimeline: function — navigate to Timeline view
  *   onNavigateToActivity: function — navigate to Activity Calendar view
  */
-export default function StatsBar({ countryData, onReset, onNavigateToTimeline, onNavigateToActivity }) {
+export default function StatsBar({
+  countryData,
+  onReset,
+  onNavigateToTimeline,
+  onNavigateToActivity,
+  onNavigateToBroadcast,
+  onNavigateToTasteSnapshot,
+  onNavigateToExploration,
+  spotifyUser,
+}) {
   const countries = Object.values(countryData)
   const totalCountries = countries.length
   const totalPlays = countries.reduce((sum, c) => sum + c.trackCount, 0)
@@ -49,6 +58,29 @@ export default function StatsBar({ countryData, onReset, onNavigateToTimeline, o
       >
         Activity
       </button>
+
+      {spotifyUser && (
+        <>
+          <button
+            onClick={onNavigateToTasteSnapshot}
+            className="px-3 py-1 border border-accent/50 text-text-secondary hover:border-accent hover:bg-accent/10 hover:text-text-primary transition-all whitespace-nowrap"
+          >
+            Taste
+          </button>
+          <button
+            onClick={onNavigateToExploration}
+            className="px-3 py-1 border border-accent/50 text-text-secondary hover:border-accent hover:bg-accent/10 hover:text-text-primary transition-all whitespace-nowrap"
+          >
+            Explore
+          </button>
+          <button
+            onClick={onNavigateToBroadcast}
+            className="px-3 py-1 border border-accent/50 text-text-secondary hover:border-accent hover:bg-accent/10 hover:text-text-primary transition-all whitespace-nowrap"
+          >
+            Live
+          </button>
+        </>
+      )}
 
       <div className="w-px h-3 sm:h-4 bg-text-secondary/30" />
 

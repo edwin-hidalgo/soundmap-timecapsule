@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { exchangeCodeForToken } from '../utils/spotifyAuth.js'
 
@@ -14,9 +14,14 @@ import { exchangeCodeForToken } from '../utils/spotifyAuth.js'
 export default function OAuthCallback({ clientId, redirectUri, onTokenReceived, onError }) {
   const [status, setStatus] = useState('processing') // 'processing' | 'success' | 'error'
   const [message, setMessage] = useState('Authorizing with Spotify...')
+  const processedRef = useRef(false) // Track if we've already processed the callback
 
   useEffect(() => {
     const processCallback = async () => {
+      // Only process once to prevent re-exchanging the code
+      if (processedRef.current) return
+      processedRef.current = true
+
       try {
         // Get authorization code from URL
         const params = new URLSearchParams(window.location.search)
@@ -39,16 +44,14 @@ export default function OAuthCallback({ clientId, redirectUri, onTokenReceived, 
         setMessage('Exchanging code for access token...')
         const token = await exchangeCodeForToken(clientId, redirectUri, code)
 
+        // Clean up URL to prevent re-processing on re-renders
+        window.history.replaceState({}, document.title, window.location.pathname)
+
         setMessage('Authorization successful!')
         setStatus('success')
 
-        // Call parent callback and redirect
+        // Call parent callback (App.jsx will handle navigation to broadcast screen)
         onTokenReceived(token)
-
-        // Redirect to home after a brief delay
-        setTimeout(() => {
-          window.location.href = '/'
-        }, 1500)
       } catch (err) {
         const errorMsg = err.message || 'Unknown error during OAuth callback'
         console.error('OAuth callback error:', err)
@@ -59,7 +62,7 @@ export default function OAuthCallback({ clientId, redirectUri, onTokenReceived, 
     }
 
     processCallback()
-  }, [clientId, redirectUri, onTokenReceived, onError])
+  }, [])
 
   return (
     <div className="w-full h-full bg-bg-primary flex items-center justify-center">

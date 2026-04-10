@@ -49,6 +49,40 @@ export async function getRecentlyPlayed(accessToken, limit = 50) {
 }
 
 /**
+ * getCurrentlyPlaying
+ * Get the currently playing track (or null if nothing is playing)
+ * Returns: { item: track object, is_playing: boolean, progress_ms, timestamp }
+ */
+export async function getCurrentlyPlaying(accessToken) {
+  try {
+    const data = await spotifyFetch(
+      'https://api.spotify.com/v1/me/player/currently-playing',
+      accessToken
+    )
+
+    // Spotify returns 204 No Content when nothing is playing
+    // The fetch helper throws on non-ok status, so we'll handle this gracefully
+    if (!data || !data.item) {
+      return null
+    }
+
+    return {
+      songName: data.item.name,
+      artist: data.item.artists?.[0]?.name || 'Unknown',
+      albumArt: data.item.album?.images?.[0]?.url || null,
+      uri: data.item.uri,
+      isPlaying: data.is_playing,
+      progressMs: data.progress_ms,
+      durationMs: data.item.duration_ms,
+      raw: data, // Full data for advanced use
+    }
+  } catch (err) {
+    console.warn('Error fetching currently playing:', err)
+    return null
+  }
+}
+
+/**
  * getTopTracks
  * Get the user's top tracks for a specific time range
  *

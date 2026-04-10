@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@supabase/supabase-js": "^2.100.1",
     "@tailwindcss/vite": "^4.2.1",
     "framer-motion": "^12.34.3",
     "mapbox-gl": "^2.15.0",

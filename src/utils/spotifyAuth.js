@@ -47,6 +47,7 @@ export async function generateAuthUrl(clientId, redirectUri, scopes = []) {
     'user-read-email',
     'user-top-read',
     'user-read-recently-played',
+    'user-read-currently-playing',
   ]
   const allScopes = scopes.length > 0 ? scopes : defaultScopes
 

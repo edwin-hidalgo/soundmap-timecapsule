@@ -5,6 +5,7 @@ import CountryMarker from './CountryMarker.jsx'
 import CapsulePanel from './CapsulePanel.jsx'
 import StatsBar from './StatsBar.jsx'
 import SpotifyConnectButton from './SpotifyConnectButton.jsx'
+import NowPlayingCard from './NowPlayingCard.jsx'
 import { markerSize } from '../utils/formatters.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -27,7 +28,11 @@ export default function MapView({
   onReset,
   onNavigateToTimeline,
   onNavigateToActivity,
+  onNavigateToBroadcast,
+  onNavigateToTasteSnapshot,
+  onNavigateToExploration,
   spotifyToken,
+  spotifyUser,
   spotifyClientId,
   spotifyRedirectUri,
   onLogoutSpotify,
@@ -104,6 +109,10 @@ export default function MapView({
         onReset={onReset}
         onNavigateToTimeline={onNavigateToTimeline}
         onNavigateToActivity={onNavigateToActivity}
+        onNavigateToBroadcast={onNavigateToBroadcast}
+        onNavigateToTasteSnapshot={onNavigateToTasteSnapshot}
+        onNavigateToExploration={onNavigateToExploration}
+        spotifyUser={spotifyUser}
       />
 
       {dataFormat === 'basic' && !geoBannerDismissed && (
@@ -131,6 +140,10 @@ export default function MapView({
         isConnected={!!spotifyToken}
         onDisconnect={onLogoutSpotify}
       />
+
+      {spotifyToken && (
+        <NowPlayingCard spotifyToken={spotifyToken} />
+      )}
 
       <CapsulePanel country={selectedCountry} onClose={handleClose} />
     </motion.div>

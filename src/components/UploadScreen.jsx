@@ -9,13 +9,21 @@ import { motion } from 'framer-motion'
  * Props:
  *   onDataReady(processedData: Object) — called after parsing is complete,
  *     triggers transition to MapView
+ *   spotifyClientId: String — Spotify OAuth client ID
+ *   spotifyRedirectUri: String — Spotify OAuth redirect URI
+ *   onNavigateToBroadcast: Function — called to navigate to broadcast screen
  *
  * States:
  *   - idle: upload zone visible
  *   - processing: spinner shown, files being read/parsed
  *   - error: error message shown, user can retry
  */
-export default function UploadScreen({ onDataReady }) {
+export default function UploadScreen({
+  onDataReady,
+  spotifyClientId,
+  spotifyRedirectUri,
+  onNavigateToBroadcast,
+}) {
   const [status, setStatus] = useState('idle')      // 'idle' | 'processing' | 'error'
   const [error, setError] = useState(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -250,6 +258,25 @@ export default function UploadScreen({ onDataReady }) {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // Try Live Broadcasts Handler
+  // ───────────────────────────────────────────────────────────────────────────
+  async function handleTryLiveBroadcasts() {
+    if (!spotifyClientId || !spotifyRedirectUri) {
+      alert('Spotify configuration not available. Please check your environment variables.')
+      return
+    }
+
+    // Set flag in sessionStorage to navigate to broadcast after OAuth completes
+    sessionStorage.setItem('navigate_to_broadcast', 'true')
+
+    // Import and use the Spotify auth utility
+    const { generateAuthUrl } = await import('../utils/spotifyAuth.js')
+    const authUrl = await generateAuthUrl(spotifyClientId, spotifyRedirectUri)
+    window.location.href = authUrl
+    // After OAuth callback, the app will navigate to broadcast screen via App.jsx
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // Demo Handler
   // ───────────────────────────────────────────────────────────────────────────
   // Loads pre-computed demoCountryData.json (fast, small) in parallel with
@@ -452,6 +479,21 @@ export default function UploadScreen({ onDataReady }) {
             className="px-6 py-3 bg-transparent hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
           >
             [ TRY_DEMO ]  →
+          </motion.button>
+        )}
+
+        {/* Try Live Broadcasts Button */}
+        {status === 'idle' && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleTryLiveBroadcasts}
+            className="px-6 py-3 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50 font-mono text-xs uppercase tracking-widest transition-all"
+          >
+            🎬 [ MAIN_CHARACTER_MODE ]  →
           </motion.button>
         )}
 
