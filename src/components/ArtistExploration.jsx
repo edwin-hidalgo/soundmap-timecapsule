@@ -1,18 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { getTopArtists, getArtistAlbums } from '../utils/spotifyAPI.js'
+import { getTopArtists, getTopTracks, getRecentlyPlayed, getArtistAlbums } from '../utils/spotifyAPI.js'
 
 /**
  * ArtistExploration — Shows how much of each top artist's discography you've explored.
  *
- * For each of your top artists (from Spotify), fetches their full album/single catalog
- * and compares against tracks in your uploaded history to compute exploration %.
+ * Data sources (in priority order):
+ * 1. Uploaded history (allEntries) — most comprehensive
+ * 2. Spotify API (top tracks + recently played) — fallback for OAuth-only users
  */
 export default function ArtistExploration({ spotifyToken, allEntries, onBack }) {
   const [artists, setArtists] = useState(null)
   const [explorationData, setExplorationData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [tracksByArtist, setTracksByArtist] = useState(null)
+  const [dataSource, setDataSource] = useState(null) // 'history' | 'api'
 
   // Build a set of unique track names per artist from uploaded history
   const historyByArtist = useMemo(() => {
@@ -29,27 +32,67 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
     return map
   }, [allEntries])
 
-  // Fetch top artists
+  // Fetch top artists + fallback track data from Spotify API if no history
   useEffect(() => {
     if (!spotifyToken?.accessToken) return
 
-    const fetchArtists = async () => {
+    const fetchData = async () => {
       try {
-        const res = await getTopArtists(spotifyToken.accessToken, 'long_term', 20)
-        setArtists(res.items || [])
+        // Always fetch top artists
+        const artistsRes = await getTopArtists(spotifyToken.accessToken, 'long_term', 20)
+        setArtists(artistsRes.items || [])
+
+        // If we have uploaded history, use that
+        if (allEntries && allEntries.length > 0) {
+          setTracksByArtist(historyByArtist)
+          setDataSource('history')
+          return
+        }
+
+        // Otherwise, build track map from Spotify API data
+        const map = new Map()
+        const addTrack = (artistName, trackName) => {
+          if (!artistName || !trackName) return
+          const key = artistName.toLowerCase()
+          if (!map.has(key)) map.set(key, new Set())
+          map.get(key).add(trackName.toLowerCase())
+        }
+
+        // Fetch top tracks across all 3 time ranges in parallel
+        const [shortRes, medRes, longRes, recentRes] = await Promise.all([
+          getTopTracks(spotifyToken.accessToken, 'short_term', 50),
+          getTopTracks(spotifyToken.accessToken, 'medium_term', 50),
+          getTopTracks(spotifyToken.accessToken, 'long_term', 50),
+          getRecentlyPlayed(spotifyToken.accessToken, 50),
+        ])
+
+        // Process top tracks
+        for (const res of [shortRes, medRes, longRes]) {
+          for (const track of (res.items || [])) {
+            addTrack(track.artists?.[0]?.name, track.name)
+          }
+        }
+
+        // Process recently played
+        for (const item of (recentRes.items || [])) {
+          addTrack(item.track?.artists?.[0]?.name, item.track?.name)
+        }
+
+        setTracksByArtist(map)
+        setDataSource('api')
       } catch (err) {
-        console.error('Failed to fetch top artists:', err)
+        console.error('Failed to fetch data:', err)
         setError('Failed to load artists from Spotify')
         setLoading(false)
       }
     }
 
-    fetchArtists()
-  }, [spotifyToken])
+    fetchData()
+  }, [spotifyToken, allEntries, historyByArtist])
 
   // Fetch discographies for top artists
   useEffect(() => {
-    if (!artists || !spotifyToken?.accessToken) return
+    if (!artists || !spotifyToken?.accessToken || !tracksByArtist) return
 
     const fetchDiscographies = async () => {
       // Limit to top 10 to avoid hitting rate limits
@@ -64,9 +107,9 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
           // Count unique album/single releases
           const totalReleases = albums.length
 
-          // Check how many of their tracks appear in history
+          // Check how many of their tracks appear in our track data
           const artistKey = artist.name.toLowerCase()
-          const heardTracks = historyByArtist.get(artistKey)
+          const heardTracks = tracksByArtist.get(artistKey)
           const tracksHeard = heardTracks ? heardTracks.size : 0
 
           // Rough exploration metric: unique tracks heard / total releases
@@ -108,7 +151,7 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
     }
 
     fetchDiscographies()
-  }, [artists, spotifyToken, historyByArtist])
+  }, [artists, spotifyToken, tracksByArtist])
 
   if (loading) {
     return (
@@ -139,11 +182,11 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
         Sorted by least explored — your biggest discovery opportunities.
       </p>
 
-      {!allEntries && (
+      {dataSource === 'api' && (
         <div className="mb-6 p-3 rounded-lg border border-accent/20 bg-accent/5">
           <p className="text-xs text-text-secondary">
-            Upload your Spotify Extended History for accurate exploration tracking.
-            Without it, exploration data is estimated.
+            Based on your Spotify top tracks and recently played (~150 tracks).
+            Upload your Extended Streaming History for more accurate results across your full listening history.
           </p>
         </div>
       )}
