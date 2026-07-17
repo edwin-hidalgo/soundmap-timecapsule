@@ -58,16 +58,16 @@ export function formatListeningHours(ms) {
 
 /**
  * markerSize
- * Maps totalMsPlayed to a px size for CountryMarker (clamp 20–60).
+ * Maps totalMsPlayed to a px size for CountryMarker (clamp 40–100).
  * Uses a square-root scale so the difference between
  * small and large listening countries isn't overwhelming.
  *
  * Example: given all countries' max totalMsPlayed as context,
- *   markerSize(countryMs, maxMs) → number between 20 and 60
+ *   markerSize(countryMs, maxMs) → number between 40 and 100
  */
 export function markerSize(countryMs, maxMs) {
-  const MIN = 20
-  const MAX = 60
+  const MIN = 40
+  const MAX = 100
   if (!maxMs || maxMs === 0) return MIN
   const ratio = Math.sqrt(countryMs / maxMs)
   return Math.round(MIN + ratio * (MAX - MIN))
