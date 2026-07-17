@@ -8,6 +8,7 @@ import {
   computeTastePassport,
 } from '../utils/timelineUtils.js'
 import { formatListeningHours } from '../utils/formatters.js'
+import { useArtistImages, useTrackImages } from '../utils/artistImages.js'
 
 /**
  * TimelineView — Screen for browsing music eras and year-by-year stats
@@ -152,6 +153,35 @@ export default function TimelineView({ allEntries, onBack }) {
 
   // Compute taste passport from windowed entries
   const tastePassport = useMemo(() => computeTastePassport(windowedEntries), [windowedEntries])
+
+  const eraArtistNames = useMemo(() => {
+    if (tab !== 'eras' || !eras.length) return []
+    return [...new Set(eras.flatMap(e => e.topArtists.slice(0, 5)))]
+  }, [tab, eras])
+
+  const yearArtistNames = useMemo(() => {
+    if (tab !== 'year' || !yearStats) return []
+    return yearStats.topArtists.map(a => a.artistName)
+  }, [tab, yearStats])
+
+  const yearTrackList = useMemo(() => {
+    if (tab !== 'year' || !yearStats) return []
+    return yearStats.topTracks.map(t => ({ name: t.trackName, artist: t.artistName }))
+  }, [tab, yearStats])
+
+  const staplesTrackList = useMemo(() => {
+    if (tab !== 'staples' || !lifeStaples) return []
+    return [
+      ...lifeStaples.current.slice(0, 10),
+      ...lifeStaples.dormant.slice(0, 8),
+      ...lifeStaples.archived.slice(0, 8),
+    ].map(t => ({ name: t.trackName, artist: t.artistName }))
+  }, [tab, lifeStaples])
+
+  const eraArtistImages = useArtistImages(eraArtistNames)
+  const yearArtistImages = useArtistImages(yearArtistNames)
+  const yearTrackImages = useTrackImages(yearTrackList)
+  const staplesTrackImages = useTrackImages(staplesTrackList)
 
   const monthNames = [
     'Jan',
@@ -329,14 +359,22 @@ export default function TimelineView({ allEntries, onBack }) {
                               Top Artists
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {era.topArtists.slice(0, 5).map((artist, j) => (
-                                <span
-                                  key={j}
-                                  className="px-3 py-1 bg-accent/20 text-accent text-xs rounded-full"
-                                >
-                                  {artist}
-                                </span>
-                              ))}
+                              {era.topArtists.slice(0, 5).map((artist, j) => {
+                                const img = eraArtistImages[artist.toLowerCase()]
+                                return (
+                                  <span
+                                    key={j}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-accent/20 text-accent text-xs rounded-full"
+                                  >
+                                    {img ? (
+                                      <img src={img} alt={artist} className="w-5 h-5 rounded-full object-cover" />
+                                    ) : (
+                                      <span className="w-5 h-5 rounded-full bg-accent/30 flex-shrink-0" />
+                                    )}
+                                    {artist}
+                                  </span>
+                                )
+                              })}
                             </div>
                           </div>
 
@@ -474,31 +512,40 @@ export default function TimelineView({ allEntries, onBack }) {
                 <div>
                   <h3 className="font-serif text-xl text-text-primary mb-4">Top Tracks</h3>
                   <div className="space-y-2">
-                    {yearStats.topTracks.map((track, i) => (
-                      <motion.div
-                        key={track.spotifyTrackUri || i}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.03 }}
-                        className="flex items-start gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors"
-                      >
-                        <span className="text-accent font-mono-stat font-bold flex-shrink-0 w-6">
-                          {i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-text-primary font-medium truncate">
-                            {track.trackName}
-                          </p>
-                          <p className="text-text-secondary text-xs truncate">
-                            {track.artistName}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="font-mono-stat text-accent text-sm">{track.playCount}</p>
-                          <p className="text-text-secondary text-xs">plays</p>
-                        </div>
-                      </motion.div>
-                    ))}
+                    {yearStats.topTracks.map((track, i) => {
+                      const trackImgKey = `${track.artistName || ''}:${track.trackName}`.toLowerCase()
+                      const trackImg = yearTrackImages[trackImgKey]
+                      return (
+                        <motion.div
+                          key={track.spotifyTrackUri || i}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          className="flex items-center gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                        >
+                          <span className="text-accent font-mono-stat font-bold flex-shrink-0 w-6">
+                            {i + 1}
+                          </span>
+                          {trackImg ? (
+                            <img src={trackImg} alt={track.trackName} className="w-10 h-10 rounded flex-shrink-0 object-cover" />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-white/10 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-text-primary font-medium truncate">
+                              {track.trackName}
+                            </p>
+                            <p className="text-text-secondary text-xs truncate">
+                              {track.artistName}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-mono-stat text-accent text-sm">{track.playCount}</p>
+                            <p className="text-text-secondary text-xs">plays</p>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -507,17 +554,25 @@ export default function TimelineView({ allEntries, onBack }) {
                   <div>
                     <h3 className="font-serif text-xl text-text-primary mb-4">Top Artists</h3>
                     <div className="flex flex-wrap gap-2">
-                      {yearStats.topArtists.map((artist, i) => (
-                        <motion.span
-                          key={artist.artistName}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="px-4 py-2 bg-accent/20 text-accent rounded-full border border-accent/30 font-medium text-sm"
-                        >
-                          {artist.artistName}
-                        </motion.span>
-                      ))}
+                      {yearStats.topArtists.map((artist, i) => {
+                        const img = yearArtistImages[artist.artistName.toLowerCase()]
+                        return (
+                          <motion.span
+                            key={artist.artistName}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-full border border-accent/30 font-medium text-sm"
+                          >
+                            {img ? (
+                              <img src={img} alt={artist.artistName} className="w-6 h-6 rounded-full object-cover" />
+                            ) : (
+                              <span className="w-6 h-6 rounded-full bg-accent/30 flex-shrink-0" />
+                            )}
+                            {artist.artistName}
+                          </motion.span>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -546,31 +601,40 @@ export default function TimelineView({ allEntries, onBack }) {
               </div>
               {lifeStaples.current.length > 0 ? (
                 <div className="space-y-2">
-                  {lifeStaples.current.slice(0, 10).map((track, i) => (
-                    <motion.div
-                      key={track.uri}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.02 }}
-                      className="flex items-start gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      <span className="text-accent font-mono-stat font-bold flex-shrink-0 w-6">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-text-primary font-medium truncate">
-                          {track.trackName}
-                        </p>
-                        <p className="text-text-secondary text-xs truncate">
-                          {track.artistName}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0 text-xs">
-                        <p className="text-accent font-mono-stat font-bold">{track.totalPlays}</p>
-                        <p className="text-text-secondary">plays</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {lifeStaples.current.slice(0, 10).map((track, i) => {
+                    const imgKey = `${track.artistName || ''}:${track.trackName}`.toLowerCase()
+                    const img = staplesTrackImages[imgKey]
+                    return (
+                      <motion.div
+                        key={track.uri}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        className="flex items-center gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        <span className="text-accent font-mono-stat font-bold flex-shrink-0 w-6">
+                          {i + 1}
+                        </span>
+                        {img ? (
+                          <img src={img} alt={track.trackName} className="w-10 h-10 rounded flex-shrink-0 object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-white/10 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-text-primary font-medium truncate">
+                            {track.trackName}
+                          </p>
+                          <p className="text-text-secondary text-xs truncate">
+                            {track.artistName}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0 text-xs">
+                          <p className="text-accent font-mono-stat font-bold">{track.totalPlays}</p>
+                          <p className="text-text-secondary">plays</p>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-text-secondary text-sm text-center py-6">No songs detected in this category yet</p>
@@ -587,31 +651,40 @@ export default function TimelineView({ allEntries, onBack }) {
               </div>
               {lifeStaples.dormant.length > 0 ? (
                 <div className="space-y-2">
-                  {lifeStaples.dormant.slice(0, 8).map((track, i) => (
-                    <motion.div
-                      key={track.uri}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.02 }}
-                      className="flex items-start gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors opacity-75"
-                    >
-                      <span className="text-text-secondary font-mono-stat font-bold flex-shrink-0 w-6">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-text-primary font-medium truncate">
-                          {track.trackName}
-                        </p>
-                        <p className="text-text-secondary text-xs truncate">
-                          {track.artistName}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0 text-xs">
-                        <p className="text-text-secondary font-mono-stat">{track.totalPlays}</p>
-                        <p className="text-text-secondary">plays</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {lifeStaples.dormant.slice(0, 8).map((track, i) => {
+                    const imgKey = `${track.artistName || ''}:${track.trackName}`.toLowerCase()
+                    const img = staplesTrackImages[imgKey]
+                    return (
+                      <motion.div
+                        key={track.uri}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        className="flex items-center gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors opacity-75"
+                      >
+                        <span className="text-text-secondary font-mono-stat font-bold flex-shrink-0 w-6">
+                          {i + 1}
+                        </span>
+                        {img ? (
+                          <img src={img} alt={track.trackName} className="w-10 h-10 rounded flex-shrink-0 object-cover opacity-75" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-white/10 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-text-primary font-medium truncate">
+                            {track.trackName}
+                          </p>
+                          <p className="text-text-secondary text-xs truncate">
+                            {track.artistName}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0 text-xs">
+                          <p className="text-text-secondary font-mono-stat">{track.totalPlays}</p>
+                          <p className="text-text-secondary">plays</p>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-text-secondary text-sm text-center py-6 opacity-75">No songs detected in this category yet</p>
@@ -628,31 +701,40 @@ export default function TimelineView({ allEntries, onBack }) {
               </div>
               {lifeStaples.archived.length > 0 ? (
                 <div className="space-y-2">
-                  {lifeStaples.archived.slice(0, 8).map((track, i) => (
-                    <motion.div
-                      key={track.uri}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.02 }}
-                      className="flex items-start gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors opacity-60"
-                    >
-                      <span className="text-text-secondary/50 font-mono-stat font-bold flex-shrink-0 w-6">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-text-secondary font-medium truncate">
-                          {track.trackName}
-                        </p>
-                        <p className="text-text-secondary/70 text-xs truncate">
-                          {track.artistName}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0 text-xs">
-                        <p className="text-text-secondary/70 font-mono-stat">{track.totalPlays}</p>
-                        <p className="text-text-secondary/60">plays</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {lifeStaples.archived.slice(0, 8).map((track, i) => {
+                    const imgKey = `${track.artistName || ''}:${track.trackName}`.toLowerCase()
+                    const img = staplesTrackImages[imgKey]
+                    return (
+                      <motion.div
+                        key={track.uri}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        className="flex items-center gap-3 p-3 rounded bg-white/5 hover:bg-white/10 transition-colors opacity-60"
+                      >
+                        <span className="text-text-secondary/50 font-mono-stat font-bold flex-shrink-0 w-6">
+                          {i + 1}
+                        </span>
+                        {img ? (
+                          <img src={img} alt={track.trackName} className="w-10 h-10 rounded flex-shrink-0 object-cover opacity-60" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-white/10 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-text-secondary font-medium truncate">
+                            {track.trackName}
+                          </p>
+                          <p className="text-text-secondary/70 text-xs truncate">
+                            {track.artistName}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0 text-xs">
+                          <p className="text-text-secondary/70 font-mono-stat">{track.totalPlays}</p>
+                          <p className="text-text-secondary/60">plays</p>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-text-secondary text-sm text-center py-6 opacity-60">No songs detected in this category yet</p>

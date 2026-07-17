@@ -1,12 +1,12 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Map, { Marker } from 'react-map-gl'
 import CountryMarker from './CountryMarker.jsx'
 import CapsulePanel from './CapsulePanel.jsx'
 import StatsBar from './StatsBar.jsx'
-import SpotifyConnectButton from './SpotifyConnectButton.jsx'
 import NowPlayingCard from './NowPlayingCard.jsx'
 import { markerSize } from '../utils/formatters.js'
+import { useTrackImages } from '../utils/artistImages.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -36,6 +36,7 @@ export default function MapView({
   spotifyClientId,
   spotifyRedirectUri,
   onLogoutSpotify,
+  lastfmUser,
   dataFormat,
 }) {
   const mapRef = useRef(null)
@@ -45,6 +46,37 @@ export default function MapView({
 
   // Compute max listening time for marker sizing
   const maxMs = Math.max(...Object.values(countryData).map((c) => c.totalMsPlayed), 0)
+
+  // Fetch top-track images for globe markers (try top 3 per country for fallback)
+  const countryTrackCandidates = useMemo(() => {
+    const entries = []
+    for (const c of Object.values(countryData)) {
+      const tracks = c.topTracks || []
+      for (let i = 0; i < Math.min(3, tracks.length); i++) {
+        const t = tracks[i]
+        if (t.trackName) {
+          entries.push({ code: c.code, name: t.trackName, artist: t.artistName, rank: i })
+        }
+      }
+    }
+    return entries
+  }, [countryData])
+
+  const topTrackImages = useTrackImages(
+    countryTrackCandidates.map(t => ({ name: t.name, artist: t.artist }))
+  )
+
+  const countryImageMap = useMemo(() => {
+    const map = {}
+    for (const t of countryTrackCandidates) {
+      if (map[t.code]) continue
+      const key = `${t.artist || ''}:${t.name}`.toLowerCase()
+      if (topTrackImages[key]) {
+        map[t.code] = topTrackImages[key]
+      }
+    }
+    return map
+  }, [countryTrackCandidates, topTrackImages])
 
   // Auto-fit bounds after map loads
   useEffect(() => {
@@ -99,6 +131,7 @@ export default function MapView({
               size={markerSize(country.totalMsPlayed, maxMs)}
               isSelected={selectedCountry?.code === country.code}
               onClick={handleMarkerClick}
+              topTrackImage={countryImageMap[country.code]}
             />
           </Marker>
         ))}
@@ -113,6 +146,7 @@ export default function MapView({
         onNavigateToTasteSnapshot={onNavigateToTasteSnapshot}
         onNavigateToExploration={onNavigateToExploration}
         spotifyUser={spotifyUser}
+        lastfmUser={lastfmUser}
       />
 
       {dataFormat === 'basic' && !geoBannerDismissed && (
@@ -134,15 +168,8 @@ export default function MapView({
         </div>
       )}
 
-      <SpotifyConnectButton
-        clientId={spotifyClientId}
-        redirectUri={spotifyRedirectUri}
-        isConnected={!!spotifyToken}
-        onDisconnect={onLogoutSpotify}
-      />
-
-      {spotifyToken && (
-        <NowPlayingCard spotifyToken={spotifyToken} />
+      {(spotifyToken || lastfmUser) && (
+        <NowPlayingCard spotifyToken={spotifyToken} lastfmUser={lastfmUser} />
       )}
 
       <CapsulePanel country={selectedCountry} onClose={handleClose} />

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import TrackRow from './TrackRow.jsx'
 import { formatDuration, formatDateRange } from '../utils/formatters.js'
+import { useArtistImages, useTrackImages } from '../utils/artistImages.js'
 
 /**
  * CapsulePanel — slide-out detail panel (right side)
@@ -12,6 +13,21 @@ import { formatDuration, formatDateRange } from '../utils/formatters.js'
  */
 export default function CapsulePanel({ country, onClose }) {
   const [trackTab, setTrackTab] = useState('top') // 'top' | 'dna'
+
+  const allTracks = useMemo(() => {
+    if (!country) return []
+    return [...(country.topTracks || []), ...(country.topTracksByConcentration || [])]
+      .map(t => ({ name: t.trackName, artist: t.artistName }))
+  }, [country])
+
+  const trackImages = useTrackImages(allTracks)
+
+  const artistNames = useMemo(() => {
+    if (!country) return []
+    return country.topArtists.map(a => a.artistName)
+  }, [country])
+
+  const artistImages = useArtistImages(artistNames)
 
   // Escape key listener
   useEffect(() => {
@@ -108,12 +124,24 @@ export default function CapsulePanel({ country, onClose }) {
 
               {trackTab === 'top' &&
                 country.topTracks.map((track, i) => (
-                  <TrackRow key={track.spotifyTrackUri || i} track={track} rank={i + 1} index={i} />
+                  <TrackRow
+                    key={track.spotifyTrackUri || i}
+                    track={track}
+                    rank={i + 1}
+                    index={i}
+                    imageUrl={trackImages[`${track.artistName || ''}:${track.trackName}`.toLowerCase()]}
+                  />
                 ))}
 
               {trackTab === 'dna' &&
                 country.topTracksByConcentration.map((track, i) => (
-                  <TrackRow key={track.spotifyTrackUri || i} track={track} rank={i + 1} index={i} />
+                  <TrackRow
+                    key={track.spotifyTrackUri || i}
+                    track={track}
+                    rank={i + 1}
+                    index={i}
+                    imageUrl={trackImages[`${track.artistName || ''}:${track.trackName}`.toLowerCase()]}
+                  />
                 ))}
             </div>
 
@@ -122,14 +150,22 @@ export default function CapsulePanel({ country, onClose }) {
               <div className="mt-6">
                 <h3 className="font-serif text-lg text-text-primary mb-3">Top Artists</h3>
                 <div className="flex flex-wrap gap-2">
-                  {country.topArtists.map((artist) => (
-                    <span
-                      key={artist.artistName}
-                      className="px-3 py-1 bg-accent/20 text-accent text-xs rounded-full border border-accent/30"
-                    >
-                      {artist.artistName}
-                    </span>
-                  ))}
+                  {country.topArtists.map((artist) => {
+                    const img = artistImages[artist.artistName.toLowerCase()]
+                    return (
+                      <span
+                        key={artist.artistName}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-accent/20 text-accent text-xs rounded-full border border-accent/30"
+                      >
+                        {img ? (
+                          <img src={img} alt={artist.artistName} className="w-5 h-5 rounded-full object-cover" />
+                        ) : (
+                          <span className="w-5 h-5 rounded-full bg-accent/30 flex-shrink-0" />
+                        )}
+                        {artist.artistName}
+                      </span>
+                    )
+                  })}
                 </div>
               </div>
             )}

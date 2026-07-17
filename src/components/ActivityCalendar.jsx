@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { groupByDay } from '../utils/timelineUtils.js'
 import { formatDuration } from '../utils/formatters.js'
+import { useTrackImages } from '../utils/artistImages.js'
 
 /**
  * ActivityCalendar — GitHub-style contribution heatmap
@@ -95,6 +96,15 @@ export default function ActivityCalendar({ allEntries, onBack }) {
     }
     return max || 1
   }, [dayData])
+
+  const activeDate = selectedDate || hoveredDate
+
+  const detailTrackList = useMemo(() => {
+    if (!activeDate || !dayData.has(activeDate)) return []
+    return dayData.get(activeDate).tracks.map(t => ({ name: t.name, artist: t.artist }))
+  }, [activeDate, dayData])
+
+  const detailTrackImages = useTrackImages(detailTrackList)
 
   // Get color based on intensity (5 tiers)
   const getColorClass = (dateStr) => {
@@ -351,8 +361,6 @@ export default function ActivityCalendar({ allEntries, onBack }) {
     )
   }
 
-  const activeDate = selectedDate || hoveredDate
-
   const detailCard = activeDate && dayData.has(activeDate) ? (
     <div className="p-4 rounded-lg bg-white/5 border border-accent/30 backdrop-blur">
       <p className="text-text-secondary text-xs uppercase tracking-wide mb-2">
@@ -366,12 +374,23 @@ export default function ActivityCalendar({ allEntries, onBack }) {
       {dayData.get(activeDate).tracks.length > 0 ? (
         <div className="space-y-2">
           <p className="text-text-secondary text-xs font-medium">Top Tracks:</p>
-          {dayData.get(activeDate).tracks.map((track, i) => (
-            <div key={i} className="text-text-primary text-xs">
-              <p className="font-medium truncate">{track.name}</p>
-              <p className="text-text-secondary text-xs truncate">{track.artist}</p>
-            </div>
-          ))}
+          {dayData.get(activeDate).tracks.map((track, i) => {
+            const imgKey = `${track.artist || ''}:${track.name}`.toLowerCase()
+            const img = detailTrackImages[imgKey]
+            return (
+              <div key={i} className="flex items-center gap-2 text-text-primary text-xs">
+                {img ? (
+                  <img src={img} alt={track.name} className="w-8 h-8 rounded flex-shrink-0 object-cover" />
+                ) : (
+                  <div className="w-8 h-8 rounded bg-white/10 flex-shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{track.name}</p>
+                  <p className="text-text-secondary text-xs truncate">{track.artist}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : (
         <p className="text-text-secondary text-xs">No tracks recorded</p>

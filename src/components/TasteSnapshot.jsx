@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { getTopArtists } from '../utils/spotifyAPI.js'
+import { getTopArtists as getLastfmTopArtists } from '../utils/lastfmAPI.js'
+import { getTopArtists as getSpotifyTopArtists } from '../utils/spotifyAPI.js'
 import { compareTaste } from '../utils/tasteComparison.js'
+import { useArtistImages } from '../utils/artistImages.js'
 
 const TABS = ['rising', 'consistent', 'fading']
 const TAB_LABELS = {
@@ -20,7 +22,31 @@ const TAB_EMPTY = {
   fading: 'Nothing fading — you\'re staying loyal to your old favorites',
 }
 
-export default function TasteSnapshot({ spotifyToken, allEntries, onBack }) {
+function lastfmImage(imageArr) {
+  if (!imageArr || !Array.isArray(imageArr)) return null
+  const large = imageArr.find(i => i.size === 'large') || imageArr.find(i => i.size === 'extralarge') || imageArr[0]
+  const url = large?.['#text'] || null
+  if (url && url.includes('2a96cbd8b46e442fc41c2b86b821562f')) return null
+  return url
+}
+
+function normalizeLastfmArtist(a) {
+  return {
+    name: a.name,
+    image: lastfmImage(a.image),
+    genres: [],
+  }
+}
+
+function normalizeSpotifyArtist(a) {
+  return {
+    name: a.name,
+    image: a.images?.[0]?.url || null,
+    genres: a.genres?.slice(0, 2) || [],
+  }
+}
+
+export default function TasteSnapshot({ spotifyToken, lastfmUser, allEntries, onBack }) {
   const [shortTermArtists, setShortTermArtists] = useState(null)
   const [longTermArtists, setLongTermArtists] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -28,31 +54,59 @@ export default function TasteSnapshot({ spotifyToken, allEntries, onBack }) {
   const [activeTab, setActiveTab] = useState('rising')
 
   useEffect(() => {
-    if (!spotifyToken?.accessToken) return
+    if (lastfmUser?.name) {
+      fetchLastfm()
+    } else if (spotifyToken?.accessToken) {
+      fetchSpotify()
+    } else {
+      setError('No music service connected')
+      setLoading(false)
+    }
 
-    const fetchData = async () => {
+    async function fetchLastfm() {
       try {
         const [shortRes, longRes] = await Promise.all([
-          getTopArtists(spotifyToken.accessToken, 'short_term', 50),
-          getTopArtists(spotifyToken.accessToken, 'long_term', 50),
+          getLastfmTopArtists(lastfmUser.name, '7day', 50),
+          getLastfmTopArtists(lastfmUser.name, 'overall', 50),
         ])
-        setShortTermArtists(shortRes.items || [])
-        setLongTermArtists(longRes.items || [])
+        setShortTermArtists((shortRes.artist || []).map(normalizeLastfmArtist))
+        setLongTermArtists((longRes.artist || []).map(normalizeLastfmArtist))
       } catch (err) {
-        console.error('Failed to fetch top artists:', err)
-        setError('Failed to load your taste data from Spotify')
+        console.error('Failed to fetch Last.fm top artists:', err)
+        setError('Failed to load your taste data')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchData()
-  }, [spotifyToken])
+    async function fetchSpotify() {
+      try {
+        const [shortRes, longRes] = await Promise.all([
+          getSpotifyTopArtists(spotifyToken.accessToken, 'short_term', 50),
+          getSpotifyTopArtists(spotifyToken.accessToken, 'long_term', 50),
+        ])
+        setShortTermArtists((shortRes.items || []).map(normalizeSpotifyArtist))
+        setLongTermArtists((longRes.items || []).map(normalizeSpotifyArtist))
+      } catch (err) {
+        console.error('Failed to fetch Spotify top artists:', err)
+        setError('Failed to load your taste data')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }, [lastfmUser, spotifyToken])
 
   const comparison = useMemo(() => {
     if (!shortTermArtists || !longTermArtists) return null
     return compareTaste(shortTermArtists, longTermArtists, allEntries)
   }, [shortTermArtists, longTermArtists, allEntries])
+
+  const allArtistNames = useMemo(() => {
+    if (!comparison) return []
+    return [...comparison.rising, ...comparison.consistent, ...comparison.fading].map(a => a.name)
+  }, [comparison])
+
+  const artistImages = useArtistImages(allArtistNames)
 
   if (loading) {
     return (
@@ -104,10 +158,8 @@ export default function TasteSnapshot({ spotifyToken, allEntries, onBack }) {
         ))}
       </div>
 
-      {/* Tab description */}
       <p className="text-xs text-text-muted mb-4">{TAB_DESCRIPTIONS[activeTab]}</p>
 
-      {/* Artist list */}
       {currentList.length === 0 ? (
         <p className="text-sm text-text-secondary py-8 text-center">{TAB_EMPTY[activeTab]}</p>
       ) : (
@@ -120,15 +172,13 @@ export default function TasteSnapshot({ spotifyToken, allEntries, onBack }) {
               transition={{ delay: i * 0.03 }}
               className="flex items-center gap-3 p-3 rounded-lg bg-surface border border-border"
             >
-              {/* Rank */}
               <span className="text-text-muted text-xs font-mono w-6 text-right flex-shrink-0">
                 {activeTab === 'fading' ? artist.longRank : artist.shortRank}
               </span>
 
-              {/* Image */}
-              {artist.image ? (
+              {(artist.image || artistImages[artist.name.toLowerCase()]) ? (
                 <img
-                  src={artist.image}
+                  src={artist.image || artistImages[artist.name.toLowerCase()]}
                   alt={artist.name}
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                 />
@@ -136,19 +186,15 @@ export default function TasteSnapshot({ spotifyToken, allEntries, onBack }) {
                 <div className="w-10 h-10 rounded-full bg-border flex-shrink-0" />
               )}
 
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <p className="text-text-primary text-sm font-medium truncate">{artist.name}</p>
-                <div className="flex items-center gap-2">
-                  {artist.genres?.length > 0 && (
-                    <span className="text-text-muted text-xs truncate">
-                      {artist.genres.join(', ')}
-                    </span>
-                  )}
-                </div>
+                {artist.genres?.length > 0 && (
+                  <span className="text-text-muted text-xs truncate">
+                    {artist.genres.join(', ')}
+                  </span>
+                )}
               </div>
 
-              {/* Context badge */}
               {activeTab === 'rising' && (
                 <span className="text-accent text-xs font-medium flex-shrink-0">New</span>
               )}
@@ -180,7 +226,6 @@ function SnapshotShell({ onBack, children }) {
       exit={{ opacity: 0 }}
       className="w-full h-full flex flex-col bg-bg-primary"
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <button
           onClick={onBack}
@@ -191,8 +236,6 @@ function SnapshotShell({ onBack, children }) {
         <h1 className="text-xl font-serif text-text-primary">Taste Snapshot</h1>
         <div className="w-12" />
       </div>
-
-      {/* Content */}
       <div className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
         {children}
       </div>

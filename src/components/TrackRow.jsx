@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
  *   rank: number (1-based)
  *   index: number (0-based, for stagger animation)
  */
-export default function TrackRow({ track, rank, index }) {
+export default function TrackRow({ track, rank, index, imageUrl }) {
   const trackId = track.spotifyTrackUri?.split(':')[2]
   const spotifyUrl = trackId ? `https://open.spotify.com/track/${trackId}` : null
 
@@ -20,6 +20,11 @@ export default function TrackRow({ track, rank, index }) {
       className="flex items-center gap-3 py-2 border-b border-white/5 hover:bg-white/5 rounded px-1 -mx-1 transition-colors"
     >
       <span className="font-mono-stat text-text-secondary text-sm w-5 text-right shrink-0">{rank}</span>
+      {imageUrl ? (
+        <img src={imageUrl} alt={track.trackName} className="w-10 h-10 rounded flex-shrink-0 object-cover" />
+      ) : (
+        <div className="w-10 h-10 rounded bg-white/10 flex-shrink-0" />
+      )}
       <div className="flex-1 min-w-0">
         {spotifyUrl ? (
           <a

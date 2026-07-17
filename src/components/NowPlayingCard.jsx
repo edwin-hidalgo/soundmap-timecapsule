@@ -1,35 +1,72 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCurrentlyPlaying } from '../utils/spotifyAPI.js'
+import { getRecentTracks as getLastfmRecentTracks } from '../utils/lastfmAPI.js'
 
-const POLL_INTERVAL = 30000 // 30 seconds
+const POLL_INTERVAL = 30000
 
-export default function NowPlayingCard({ spotifyToken }) {
+function lastfmImage(imageArr) {
+  if (!imageArr || !Array.isArray(imageArr)) return null
+  const large = imageArr.find(i => i.size === 'large') || imageArr.find(i => i.size === 'extralarge') || imageArr[0]
+  const url = large?.['#text'] || null
+  if (url && url.includes('2a96cbd8b46e442fc41c2b86b821562f')) return null
+  return url
+}
+
+export default function NowPlayingCard({ spotifyToken, lastfmUser }) {
   const [song, setSong] = useState(null)
   const [progress, setProgress] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
+  const [hasProgress, setHasProgress] = useState(false)
   const progressTimer = useRef(null)
 
-  // Poll Spotify for currently playing
-  useEffect(() => {
-    if (!spotifyToken?.accessToken) return
+  const useLastfm = !!lastfmUser?.name
 
-    const fetchSong = async () => {
+  useEffect(() => {
+    if (useLastfm) {
+      fetchLastfm()
+      const interval = setInterval(fetchLastfm, POLL_INTERVAL)
+      return () => clearInterval(interval)
+    } else if (spotifyToken?.accessToken) {
+      fetchSpotify()
+      const interval = setInterval(fetchSpotify, POLL_INTERVAL)
+      return () => clearInterval(interval)
+    }
+
+    async function fetchLastfm() {
+      try {
+        const res = await getLastfmRecentTracks(lastfmUser.name, { limit: 1 })
+        const tracks = res.track || []
+        if (tracks.length > 0 && tracks[0]['@attr']?.nowplaying === 'true') {
+          const track = tracks[0]
+          setSong({
+            songName: track.name,
+            artist: track.artist?.name || track.artist?.['#text'] || 'Unknown',
+            albumArt: lastfmImage(track.image),
+            isPlaying: true,
+          })
+          setHasProgress(false)
+        } else {
+          setSong(null)
+        }
+      } catch (err) {
+        console.error('Error fetching Last.fm now playing:', err)
+      }
+    }
+
+    async function fetchSpotify() {
       const data = await getCurrentlyPlaying(spotifyToken.accessToken)
       setSong(data)
       if (data) {
         setProgress(data.progressMs / data.durationMs)
+        setHasProgress(true)
       }
     }
+  }, [useLastfm, lastfmUser, spotifyToken])
 
-    fetchSong()
-    const interval = setInterval(fetchSong, POLL_INTERVAL)
-    return () => clearInterval(interval)
-  }, [spotifyToken])
-
-  // Smooth progress bar interpolation between polls
+  // Smooth progress bar interpolation (Spotify only)
   useEffect(() => {
-    if (!song?.isPlaying || !song.durationMs) {
+    if (!song?.isPlaying || !song.durationMs || !hasProgress) {
       if (progressTimer.current) clearInterval(progressTimer.current)
       return
     }
@@ -45,7 +82,7 @@ export default function NowPlayingCard({ spotifyToken }) {
     return () => {
       if (progressTimer.current) clearInterval(progressTimer.current)
     }
-  }, [song?.isPlaying, song?.durationMs, song?.uri])
+  }, [song?.isPlaying, song?.durationMs, song?.uri, hasProgress])
 
   if (!song) return null
 
@@ -70,7 +107,6 @@ export default function NowPlayingCard({ spotifyToken }) {
         >
           <div className="glass-panel rounded-lg overflow-hidden">
             <div className="flex items-center gap-3 p-3">
-              {/* Album Art */}
               {song.albumArt && (
                 <img
                   src={song.albumArt}
@@ -79,7 +115,6 @@ export default function NowPlayingCard({ spotifyToken }) {
                 />
               )}
 
-              {/* Song Info */}
               <div className="flex-1 min-w-0">
                 <p className="text-text-primary text-sm font-medium truncate">
                   {song.songName}
@@ -89,7 +124,6 @@ export default function NowPlayingCard({ spotifyToken }) {
                 </p>
               </div>
 
-              {/* Status indicator */}
               <div className="flex-shrink-0 flex items-center gap-1.5">
                 {song.isPlaying ? (
                   <div className="flex items-end gap-[2px] h-3">
@@ -102,7 +136,6 @@ export default function NowPlayingCard({ spotifyToken }) {
                 )}
               </div>
 
-              {/* Dismiss */}
               <button
                 onClick={() => setIsVisible(false)}
                 className="text-text-muted hover:text-text-secondary text-xs transition-colors flex-shrink-0 ml-1"
@@ -111,23 +144,25 @@ export default function NowPlayingCard({ spotifyToken }) {
               </button>
             </div>
 
-            {/* Progress bar */}
-            <div className="px-3 pb-2">
-              <div className="h-[2px] bg-border rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent rounded-full transition-[width] duration-1000 linear"
-                  style={{ width: `${progress * 100}%` }}
-                />
+            {/* Progress bar — only shown for Spotify (has duration data) */}
+            {hasProgress && song.durationMs && (
+              <div className="px-3 pb-2">
+                <div className="h-[2px] bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent rounded-full transition-[width] duration-1000 linear"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-[10px] text-text-muted font-mono">
+                    {formatTime(currentMs)}
+                  </span>
+                  <span className="text-[10px] text-text-muted font-mono">
+                    {formatTime(song.durationMs)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-text-muted font-mono">
-                  {formatTime(currentMs)}
-                </span>
-                <span className="text-[10px] text-text-muted font-mono">
-                  {formatTime(song.durationMs)}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </motion.div>
       )}
