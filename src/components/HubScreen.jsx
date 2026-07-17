@@ -1,19 +1,20 @@
 import { motion } from 'framer-motion'
+import { BROADCASTS_ENABLED } from '../config/features.js'
 
-/**
- * HubScreen — Landing hub for OAuth-only users (no uploaded history).
- * Shows available features based on Spotify connection.
- * If user also has uploaded data, they go to MapView instead.
- */
 export default function HubScreen({
   spotifyUser,
+  lastfmUser,
   onNavigateToTasteSnapshot,
   onNavigateToExploration,
   onNavigateToBroadcast,
   onNavigateToUpload,
   onLoadDemo,
   onLogoutSpotify,
+  onLogoutLastfm,
 }) {
+  const displayName = lastfmUser?.realname || lastfmUser?.name || spotifyUser?.display_name || null
+  const connectedService = lastfmUser ? 'Last.fm' : 'Spotify'
+
   const features = [
     {
       key: 'taste',
@@ -30,7 +31,9 @@ export default function HubScreen({
     {
       key: 'live',
       title: 'Live',
-      description: 'Drop your current listening moment with an AI-generated narration — see what others are playing',
+      description: BROADCASTS_ENABLED
+        ? 'See your recent listening activity and what the community is playing'
+        : 'See your recent listening activity',
       action: onNavigateToBroadcast,
     },
   ]
@@ -57,10 +60,10 @@ export default function HubScreen({
             /// MY_MUSIC_MEMORY
           </p>
           <h1 className="text-3xl sm:text-4xl text-text-primary mb-2" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-            Welcome{spotifyUser?.display_name ? `, ${spotifyUser.display_name.split(' ')[0]}` : ''}
+            Welcome{displayName ? `, ${displayName.split(' ')[0]}` : ''}
           </h1>
           <p className="text-sm text-text-secondary">
-            Spotify connected — here's what you can explore
+            {connectedService} connected — here's what you can explore
           </p>
         </div>
 
@@ -126,12 +129,22 @@ export default function HubScreen({
           transition={{ delay: 0.5 }}
           className="text-center mt-6"
         >
-          <button
-            onClick={onLogoutSpotify}
-            className="text-text-muted hover:text-text-secondary text-xs transition-colors"
-          >
-            Disconnect Spotify
-          </button>
+          {lastfmUser && (
+            <button
+              onClick={onLogoutLastfm}
+              className="text-text-muted hover:text-text-secondary text-xs transition-colors"
+            >
+              Disconnect Last.fm
+            </button>
+          )}
+          {spotifyUser && !lastfmUser && (
+            <button
+              onClick={onLogoutSpotify}
+              className="text-text-muted hover:text-text-secondary text-xs transition-colors"
+            >
+              Disconnect Spotify
+            </button>
+          )}
         </motion.div>
       </div>
     </motion.div>

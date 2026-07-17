@@ -20,6 +20,7 @@ import { motion } from 'framer-motion'
  */
 export default function UploadScreen({
   onDataReady,
+  onNavigateToLastfmOnboarding,
   spotifyClientId,
   spotifyRedirectUri,
   onNavigateToBroadcast,
@@ -257,22 +258,8 @@ export default function UploadScreen({
     }
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Try Live Broadcasts Handler
-  // ───────────────────────────────────────────────────────────────────────────
-  async function handleConnectSpotify() {
-    if (!spotifyClientId || !spotifyRedirectUri) {
-      alert('Spotify configuration not available. Please check your environment variables.')
-      return
-    }
-
-    // Set flag in sessionStorage to navigate to hub after OAuth completes
-    sessionStorage.setItem('navigate_to_hub', 'true')
-
-    // Import and use the Spotify auth utility
-    const { generateAuthUrl } = await import('../utils/spotifyAuth.js')
-    const authUrl = await generateAuthUrl(spotifyClientId, spotifyRedirectUri)
-    window.location.href = authUrl
+  function handleConnectLastfm() {
+    onNavigateToLastfmOnboarding()
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -488,7 +475,7 @@ export default function UploadScreen({
           </motion.div>
         )}
 
-        {/* Connect Spotify Button */}
+        {/* Connect Last.fm Button */}
         {status === 'idle' && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -499,13 +486,13 @@ export default function UploadScreen({
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={handleConnectSpotify}
+              onClick={handleConnectLastfm}
               className="px-6 py-3 bg-accent/10 hover:bg-accent/20 text-accent-light border border-accent/40 font-mono text-xs uppercase tracking-widest transition-all"
             >
-              [ CONNECT_SPOTIFY ]  →
+              [ CONNECT_LAST.FM ]  →
             </motion.button>
             <p className="text-[10px] text-text-muted text-center max-w-xs">
-              Unlock taste snapshots, artist exploration, and live features. Currently in beta — reach out to get whitelisted.
+              Unlock taste snapshots, artist exploration, and live features — works with Spotify, Apple Music, and more
             </p>
           </motion.div>
         )}

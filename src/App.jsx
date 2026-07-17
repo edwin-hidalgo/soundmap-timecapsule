@@ -9,11 +9,16 @@ import TasteSnapshot from './components/TasteSnapshot.jsx'
 import ArtistExploration from './components/ArtistExploration.jsx'
 import HubScreen from './components/HubScreen.jsx'
 import OAuthCallback from './components/OAuthCallback.jsx'
+import LastfmCallback from './components/LastfmCallback.jsx'
+import LastfmOnboarding from './components/LastfmOnboarding.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { getCurrentUser } from './utils/spotifyAPI.js'
+import { getUserInfo } from './utils/lastfmAPI.js'
+import { loadSession, clearSession } from './utils/lastfmAuth.js'
 import { upsertProfile } from './utils/supabase.js'
+import { BROADCASTS_ENABLED } from './config/features.js'
 
-// Spotify OAuth configuration
+// Spotify OAuth configuration (legacy — kept for existing users)
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || null
 const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || null
 
@@ -23,47 +28,79 @@ export default function App() {
   const [allEntries, setAllEntries] = useState(null)
   const [dataFormat, setDataFormat] = useState(null)
 
-  // OAuth state
+  // Spotify OAuth state (legacy)
   const [spotifyToken, setSpotifyToken] = useState(null)
   const [spotifyUser, setSpotifyUser] = useState(null)
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [shouldNavigateToBroadcast, setShouldNavigateToBroadcast] = useState(false)
   const [shouldNavigateToHub, setShouldNavigateToHub] = useState(false)
 
-  // Load OAuth state on mount
+  // Last.fm state (primary)
+  const [lastfmSession, setLastfmSession] = useState(null)
+  const [lastfmUser, setLastfmUser] = useState(null)
+  const [isLastfmCallback, setIsLastfmCallback] = useState(false)
+
+  const hasAuth = !!(spotifyUser || lastfmUser)
+
+  // Load auth state on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      // Check if this is an OAuth callback
+      const path = window.location.pathname
       const params = new URLSearchParams(window.location.search)
+
+      // Last.fm callback takes priority
+      if (path === '/lastfm-callback' && params.has('token')) {
+        setIsLastfmCallback(true)
+        return
+      }
+
+      // Spotify OAuth callback (legacy)
       if (params.has('code') || params.has('error')) {
         setIsOAuthCallback(true)
         return
       }
 
-      // Load saved token from localStorage
+      // Load saved Last.fm session (never expires)
+      const savedSession = loadSession()
+      if (savedSession) {
+        setLastfmSession(savedSession)
+        try {
+          const savedUser = localStorage.getItem('lastfm_user')
+          if (savedUser) {
+            setLastfmUser(JSON.parse(savedUser))
+          }
+          const user = await getUserInfo(savedSession.name)
+          setLastfmUser(user)
+          localStorage.setItem('lastfm_user', JSON.stringify(user))
+          if (!countryData) setScreen('hub')
+        } catch (err) {
+          console.error('Failed to fetch Last.fm user:', err)
+          const savedUser = localStorage.getItem('lastfm_user')
+          if (savedUser) {
+            setLastfmUser(JSON.parse(savedUser))
+            if (!countryData) setScreen('hub')
+          }
+        }
+        return
+      }
+
+      // Load saved Spotify token (legacy)
       const savedToken = localStorage.getItem('spotify_token')
       if (savedToken) {
         try {
           const token = JSON.parse(savedToken)
-          // Check if token is expired
           if (token.expiresAt && token.expiresAt > Date.now()) {
             setSpotifyToken(token)
-
-            // Also fetch the user profile if token is valid
             try {
               const user = await getCurrentUser(token.accessToken)
               if (user) {
                 setSpotifyUser(user)
-                // If user has Spotify but no uploaded data, show hub
-                if (!countryData) {
-                  setScreen('hub')
-                }
+                if (!countryData) setScreen('hub')
               }
             } catch (err) {
               console.error('Failed to fetch user from saved token:', err)
             }
           } else {
-            // Token expired, clear it
             localStorage.removeItem('spotify_token')
           }
         } catch (err) {
@@ -78,15 +115,15 @@ export default function App() {
 
   // Navigate after OAuth if requested
   useEffect(() => {
-    if (shouldNavigateToBroadcast && spotifyUser) {
+    if (shouldNavigateToBroadcast && (spotifyUser || lastfmUser)) {
       setScreen('broadcast')
       setShouldNavigateToBroadcast(false)
     }
-    if (shouldNavigateToHub && spotifyUser) {
+    if (shouldNavigateToHub && (spotifyUser || lastfmUser)) {
       setScreen('hub')
       setShouldNavigateToHub(false)
     }
-  }, [shouldNavigateToBroadcast, shouldNavigateToHub, spotifyUser])
+  }, [shouldNavigateToBroadcast, shouldNavigateToHub, spotifyUser, lastfmUser])
 
   function handleDataReady(processedData, rawEntries, format) {
     setCountryData(processedData)
@@ -102,37 +139,15 @@ export default function App() {
     setScreen('upload')
   }
 
-  function handleNavigateToTimeline() {
-    setScreen('timeline')
-  }
-
-  function handleNavigateToActivity() {
-    setScreen('activity')
-  }
-
-  function handleNavigateToMap() {
-    setScreen('map')
-  }
-
-  function handleNavigateToBroadcast() {
-    setScreen('broadcast')
-  }
-
-  function handleNavigateToTasteSnapshot() {
-    setScreen('taste-snapshot')
-  }
-
-  function handleNavigateToExploration() {
-    setScreen('exploration')
-  }
-
-  function handleNavigateToHub() {
-    setScreen('hub')
-  }
-
-  function handleNavigateToUpload() {
-    setScreen('upload')
-  }
+  function handleNavigateToTimeline() { setScreen('timeline') }
+  function handleNavigateToActivity() { setScreen('activity') }
+  function handleNavigateToMap() { setScreen('map') }
+  function handleNavigateToBroadcast() { setScreen('broadcast') }
+  function handleNavigateToTasteSnapshot() { setScreen('taste-snapshot') }
+  function handleNavigateToExploration() { setScreen('exploration') }
+  function handleNavigateToHub() { setScreen('hub') }
+  function handleNavigateToUpload() { setScreen('upload') }
+  function handleNavigateToLastfmOnboarding() { setScreen('lastfm-onboarding') }
 
   async function handleLoadDemo() {
     try {
@@ -163,23 +178,49 @@ export default function App() {
     }
   }
 
-  // Back handler — goes to map if data loaded, hub if OAuth-only
   function handleBackToHome() {
     if (countryData) {
       setScreen('map')
-    } else if (spotifyUser) {
+    } else if (hasAuth) {
       setScreen('hub')
     } else {
       setScreen('upload')
     }
   }
 
+  // Last.fm auth handlers
+  async function handleLastfmSessionReceived(session) {
+    setLastfmSession(session)
+    setIsLastfmCallback(false)
+    setShouldNavigateToHub(true)
+
+    try {
+      const user = await getUserInfo(session.name)
+      setLastfmUser(user)
+      localStorage.setItem('lastfm_user', JSON.stringify(user))
+    } catch (err) {
+      console.error('Failed to fetch Last.fm user info:', err)
+      setLastfmUser({ name: session.name })
+    }
+  }
+
+  function handleLastfmError(error) {
+    console.error('Last.fm auth error:', error)
+    setIsLastfmCallback(false)
+  }
+
+  function handleLogoutLastfm() {
+    clearSession()
+    setLastfmSession(null)
+    setLastfmUser(null)
+    if (!countryData) setScreen('upload')
+  }
+
+  // Spotify auth handlers (legacy)
   async function handleSpotifyTokenReceived(token) {
-    // Save token to localStorage
     localStorage.setItem('spotify_token', JSON.stringify(token))
     setSpotifyToken(token)
 
-    // Check navigation flags set before OAuth redirect
     const wantsBroadcast = sessionStorage.getItem('navigate_to_broadcast')
     const wantsHub = sessionStorage.getItem('navigate_to_hub')
     if (wantsBroadcast) {
@@ -190,23 +231,16 @@ export default function App() {
       setShouldNavigateToHub(true)
     }
 
-    // Fetch user profile from Spotify API
     try {
       const user = await getCurrentUser(token.accessToken)
       if (user) {
         setSpotifyUser(user)
-
-        // Upsert user to Supabase profiles table
-        try {
-          await upsertProfile(user)
-        } catch (supabaseErr) {
-          console.error('Failed to upsert profile to Supabase:', supabaseErr)
-          // Not critical — app still works with Supabase offline
+        if (BROADCASTS_ENABLED) {
+          try { await upsertProfile(user) } catch {}
         }
       }
     } catch (err) {
       console.error('Failed to fetch Spotify user:', err)
-      // Still consider the OAuth successful even if user fetch fails
     }
 
     setIsOAuthCallback(false)
@@ -221,12 +255,19 @@ export default function App() {
     localStorage.removeItem('spotify_token')
     setSpotifyToken(null)
     setSpotifyUser(null)
-    if (!countryData) {
-      setScreen('upload')
-    }
+    if (!countryData && !lastfmUser) setScreen('upload')
   }
 
-  // If this is an OAuth callback, show the callback component
+  // Auth callback screens
+  if (isLastfmCallback) {
+    return (
+      <LastfmCallback
+        onSessionReceived={handleLastfmSessionReceived}
+        onError={handleLastfmError}
+      />
+    )
+  }
+
   if (isOAuthCallback) {
     return (
       <OAuthCallback
@@ -245,9 +286,16 @@ export default function App() {
           <UploadScreen
             key="upload"
             onDataReady={handleDataReady}
+            onNavigateToLastfmOnboarding={handleNavigateToLastfmOnboarding}
             spotifyClientId={SPOTIFY_CLIENT_ID}
             spotifyRedirectUri={SPOTIFY_REDIRECT_URI}
             onNavigateToBroadcast={handleNavigateToBroadcast}
+          />
+        )}
+        {screen === 'lastfm-onboarding' && (
+          <LastfmOnboarding
+            key="lastfm-onboarding"
+            onBack={handleNavigateToUpload}
           />
         )}
         {screen === 'map' && (
@@ -265,6 +313,7 @@ export default function App() {
             spotifyClientId={SPOTIFY_CLIENT_ID}
             spotifyRedirectUri={SPOTIFY_REDIRECT_URI}
             onLogoutSpotify={handleLogoutSpotify}
+            lastfmUser={lastfmUser}
             dataFormat={dataFormat}
           />
         )}
@@ -287,12 +336,14 @@ export default function App() {
           <HubScreen
             key="hub"
             spotifyUser={spotifyUser}
+            lastfmUser={lastfmUser}
             onNavigateToTasteSnapshot={handleNavigateToTasteSnapshot}
             onNavigateToExploration={handleNavigateToExploration}
             onNavigateToBroadcast={handleNavigateToBroadcast}
             onNavigateToUpload={handleNavigateToUpload}
             onLoadDemo={handleLoadDemo}
             onLogoutSpotify={handleLogoutSpotify}
+            onLogoutLastfm={handleLogoutLastfm}
           />
         )}
         {screen === 'broadcast' && (
@@ -300,6 +351,7 @@ export default function App() {
             key="broadcast"
             spotifyToken={spotifyToken}
             spotifyUser={spotifyUser}
+            lastfmUser={lastfmUser}
             onBack={handleBackToHome}
             onNavigateToBroadcast={handleNavigateToBroadcast}
           />
@@ -308,6 +360,7 @@ export default function App() {
           <TasteSnapshot
             key="taste-snapshot"
             spotifyToken={spotifyToken}
+            lastfmUser={lastfmUser}
             allEntries={allEntries}
             onBack={handleBackToHome}
           />
@@ -316,6 +369,7 @@ export default function App() {
           <ArtistExploration
             key="exploration"
             spotifyToken={spotifyToken}
+            lastfmUser={lastfmUser}
             allEntries={allEntries}
             onBack={handleBackToHome}
           />

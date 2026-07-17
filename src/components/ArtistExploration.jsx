@@ -1,23 +1,26 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { getTopArtists, getTopTracks, getRecentlyPlayed, getArtistAlbums } from '../utils/spotifyAPI.js'
+import { getTopArtists as getLastfmTopArtists, getTopTracks as getLastfmTopTracks, getRecentTracks as getLastfmRecentTracks, getArtistTopAlbums as getLastfmArtistAlbums } from '../utils/lastfmAPI.js'
+import { getTopArtists as getSpotifyTopArtists, getTopTracks as getSpotifyTopTracks, getRecentlyPlayed, getArtistAlbums } from '../utils/spotifyAPI.js'
+import { useArtistImages } from '../utils/artistImages.js'
 
-/**
- * ArtistExploration — Shows how much of each top artist's discography you've explored.
- *
- * Data sources (in priority order):
- * 1. Uploaded history (allEntries) — most comprehensive
- * 2. Spotify API (top tracks + recently played) — fallback for OAuth-only users
- */
-export default function ArtistExploration({ spotifyToken, allEntries, onBack }) {
+function lastfmImage(imageArr) {
+  if (!imageArr || !Array.isArray(imageArr)) return null
+  const large = imageArr.find(i => i.size === 'extralarge') || imageArr.find(i => i.size === 'large') || imageArr[0]
+  const url = large?.['#text'] || null
+  if (url && url.includes('2a96cbd8b46e442fc41c2b86b821562f')) return null
+  return url
+}
+
+export default function ArtistExploration({ spotifyToken, lastfmUser, allEntries, onBack }) {
   const [artists, setArtists] = useState(null)
   const [explorationData, setExplorationData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [tracksByArtist, setTracksByArtist] = useState(null)
-  const [dataSource, setDataSource] = useState(null) // 'history' | 'api'
+  const [dataSource, setDataSource] = useState(null)
+  const [useLastfm, setUseLastfm] = useState(false)
 
-  // Build a set of unique track names per artist from uploaded history
   const historyByArtist = useMemo(() => {
     if (!allEntries) return new Map()
     const map = new Map()
@@ -32,24 +35,35 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
     return map
   }, [allEntries])
 
-  // Fetch top artists + fallback track data from Spotify API if no history
   useEffect(() => {
-    if (!spotifyToken?.accessToken) return
+    if (lastfmUser?.name) {
+      setUseLastfm(true)
+      fetchLastfmData()
+    } else if (spotifyToken?.accessToken) {
+      setUseLastfm(false)
+      fetchSpotifyData()
+    } else {
+      setError('No music service connected')
+      setLoading(false)
+    }
 
-    const fetchData = async () => {
+    async function fetchLastfmData() {
       try {
-        // Always fetch top artists
-        const artistsRes = await getTopArtists(spotifyToken.accessToken, 'long_term', 20)
-        setArtists(artistsRes.items || [])
+        const res = await getLastfmTopArtists(lastfmUser.name, 'overall', 20)
+        const topArtists = (res.artist || []).map(a => ({
+          name: a.name,
+          image: lastfmImage(a.image),
+          url: a.url,
+          playcount: parseInt(a.playcount, 10) || 0,
+        }))
+        setArtists(topArtists)
 
-        // If we have uploaded history, use that
         if (allEntries && allEntries.length > 0) {
           setTracksByArtist(historyByArtist)
           setDataSource('history')
           return
         }
 
-        // Otherwise, build track map from Spotify API data
         const map = new Map()
         const addTrack = (artistName, trackName) => {
           if (!artistName || !trackName) return
@@ -58,22 +72,69 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
           map.get(key).add(trackName.toLowerCase())
         }
 
-        // Fetch top tracks across all 3 time ranges in parallel
         const [shortRes, medRes, longRes, recentRes] = await Promise.all([
-          getTopTracks(spotifyToken.accessToken, 'short_term', 50),
-          getTopTracks(spotifyToken.accessToken, 'medium_term', 50),
-          getTopTracks(spotifyToken.accessToken, 'long_term', 50),
+          getLastfmTopTracks(lastfmUser.name, '7day', 50),
+          getLastfmTopTracks(lastfmUser.name, '6month', 50),
+          getLastfmTopTracks(lastfmUser.name, 'overall', 50),
+          getLastfmRecentTracks(lastfmUser.name, { limit: 50 }),
+        ])
+
+        for (const res of [shortRes, medRes, longRes]) {
+          for (const track of (res.track || [])) {
+            addTrack(track.artist?.name, track.name)
+          }
+        }
+
+        for (const track of (recentRes.track || [])) {
+          addTrack(track.artist?.name || track.artist?.['#text'], track.name)
+        }
+
+        setTracksByArtist(map)
+        setDataSource('api')
+      } catch (err) {
+        console.error('Failed to fetch Last.fm data:', err)
+        setError('Failed to load artists')
+        setLoading(false)
+      }
+    }
+
+    async function fetchSpotifyData() {
+      try {
+        const artistsRes = await getSpotifyTopArtists(spotifyToken.accessToken, 'long_term', 20)
+        setArtists((artistsRes.items || []).map(a => ({
+          name: a.name,
+          id: a.id,
+          image: a.images?.[0]?.url || null,
+          genres: a.genres?.slice(0, 2) || [],
+        })))
+
+        if (allEntries && allEntries.length > 0) {
+          setTracksByArtist(historyByArtist)
+          setDataSource('history')
+          return
+        }
+
+        const map = new Map()
+        const addTrack = (artistName, trackName) => {
+          if (!artistName || !trackName) return
+          const key = artistName.toLowerCase()
+          if (!map.has(key)) map.set(key, new Set())
+          map.get(key).add(trackName.toLowerCase())
+        }
+
+        const [shortRes, medRes, longRes, recentRes] = await Promise.all([
+          getSpotifyTopTracks(spotifyToken.accessToken, 'short_term', 50),
+          getSpotifyTopTracks(spotifyToken.accessToken, 'medium_term', 50),
+          getSpotifyTopTracks(spotifyToken.accessToken, 'long_term', 50),
           getRecentlyPlayed(spotifyToken.accessToken, 50),
         ])
 
-        // Process top tracks
         for (const res of [shortRes, medRes, longRes]) {
           for (const track of (res.items || [])) {
             addTrack(track.artists?.[0]?.name, track.name)
           }
         }
 
-        // Process recently played
         for (const item of (recentRes.items || [])) {
           addTrack(item.track?.artists?.[0]?.name, item.track?.name)
         }
@@ -81,48 +142,49 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
         setTracksByArtist(map)
         setDataSource('api')
       } catch (err) {
-        console.error('Failed to fetch data:', err)
-        setError('Failed to load artists from Spotify')
+        console.error('Failed to fetch Spotify data:', err)
+        setError('Failed to load artists')
         setLoading(false)
       }
     }
+  }, [lastfmUser, spotifyToken, allEntries, historyByArtist])
 
-    fetchData()
-  }, [spotifyToken, allEntries, historyByArtist])
-
-  // Fetch discographies for top artists
+  // Fetch discographies
   useEffect(() => {
-    if (!artists || !spotifyToken?.accessToken || !tracksByArtist) return
+    if (!artists || !tracksByArtist) return
 
     const fetchDiscographies = async () => {
-      // Limit to top 10 to avoid hitting rate limits
       const topArtists = artists.slice(0, 10)
       const results = []
 
       for (const artist of topArtists) {
         try {
-          const albumsRes = await getArtistAlbums(spotifyToken.accessToken, artist.id, 50)
-          const albums = albumsRes.items || []
+          let totalReleases = 0
 
-          // Count unique album/single releases
-          const totalReleases = albums.length
+          if (useLastfm) {
+            const albumsRes = await getLastfmArtistAlbums(artist.name, 50)
+            totalReleases = albumsRes.album?.length || 0
+          } else {
+            const albumsRes = await getArtistAlbums(spotifyToken.accessToken, artist.id, 50)
+            totalReleases = albumsRes.items?.length || 0
+          }
 
-          // Check how many of their tracks appear in our track data
           const artistKey = artist.name.toLowerCase()
           const heardTracks = tracksByArtist.get(artistKey)
           const tracksHeard = heardTracks ? heardTracks.size : 0
 
-          // Rough exploration metric: unique tracks heard / total releases
-          // Not perfect (albums have multiple tracks) but gives a directional signal
+          const denominator = dataSource === 'api'
+            ? totalReleases
+            : totalReleases * 3
           const explorationScore = totalReleases > 0
-            ? Math.min(1, tracksHeard / (totalReleases * 3)) // ~3 tracks per release avg
+            ? Math.min(1, tracksHeard / denominator)
             : 0
 
           results.push({
-            id: artist.id,
+            id: artist.name,
             name: artist.name,
-            image: artist.images?.[0]?.url || null,
-            genres: artist.genres?.slice(0, 2) || [],
+            image: artist.image || null,
+            genres: artist.genres || [],
             totalReleases,
             tracksHeard,
             explorationScore,
@@ -131,10 +193,10 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
         } catch (err) {
           console.warn(`Failed to fetch discography for ${artist.name}:`, err)
           results.push({
-            id: artist.id,
+            id: artist.name,
             name: artist.name,
-            image: artist.images?.[0]?.url || null,
-            genres: artist.genres?.slice(0, 2) || [],
+            image: artist.image || null,
+            genres: artist.genres || [],
             totalReleases: 0,
             tracksHeard: 0,
             explorationScore: 0,
@@ -144,14 +206,20 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
         }
       }
 
-      // Sort by exploration % ascending (least explored first = most opportunity)
       results.sort((a, b) => a.explorationScore - b.explorationScore)
       setExplorationData(results)
       setLoading(false)
     }
 
     fetchDiscographies()
-  }, [artists, spotifyToken, tracksByArtist])
+  }, [artists, tracksByArtist, useLastfm, spotifyToken, dataSource])
+
+  const explorationArtistNames = useMemo(() => {
+    if (!explorationData) return []
+    return explorationData.map(a => a.name)
+  }, [explorationData])
+
+  const artistImages = useArtistImages(explorationArtistNames)
 
   if (loading) {
     return (
@@ -185,7 +253,7 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
       {dataSource === 'api' && (
         <div className="mb-6 p-3 rounded-lg border border-accent/20 bg-accent/5">
           <p className="text-xs text-text-secondary">
-            Based on your Spotify top tracks and recently played (~150 tracks).
+            Based on your top tracks and recently played.
             Upload your Extended Streaming History for more accurate results across your full listening history.
           </p>
         </div>
@@ -201,9 +269,9 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
             className="p-4 rounded-lg bg-surface border border-border"
           >
             <div className="flex items-center gap-3 mb-3">
-              {artist.image ? (
+              {(artist.image || artistImages[artist.name.toLowerCase()]) ? (
                 <img
-                  src={artist.image}
+                  src={artist.image || artistImages[artist.name.toLowerCase()]}
                   alt={artist.name}
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                 />
@@ -213,7 +281,7 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
 
               <div className="flex-1 min-w-0">
                 <p className="text-text-primary text-sm font-medium truncate">{artist.name}</p>
-                {artist.genres.length > 0 && (
+                {artist.genres?.length > 0 && (
                   <p className="text-text-muted text-xs truncate">{artist.genres.join(', ')}</p>
                 )}
               </div>
@@ -230,7 +298,6 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
               </div>
             </div>
 
-            {/* Progress bar */}
             <div className="h-2 bg-border rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
@@ -244,7 +311,6 @@ export default function ArtistExploration({ spotifyToken, allEntries, onBack }) 
               />
             </div>
 
-            {/* Stats */}
             <div className="flex gap-4 mt-2">
               <span className="text-[10px] text-text-muted">
                 {artist.tracksHeard} unique tracks heard

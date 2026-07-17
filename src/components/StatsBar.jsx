@@ -19,6 +19,7 @@ export default function StatsBar({
   onNavigateToTasteSnapshot,
   onNavigateToExploration,
   spotifyUser,
+  lastfmUser,
 }) {
   const countries = Object.values(countryData)
   const totalCountries = countries.length
@@ -59,7 +60,7 @@ export default function StatsBar({
         Activity
       </button>
 
-      {spotifyUser && (
+      {(spotifyUser || lastfmUser) && (
         <>
           <button
             onClick={onNavigateToTasteSnapshot}

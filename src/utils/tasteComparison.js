@@ -1,67 +1,68 @@
 /**
  * tasteComparison.js — Compare current vs historical listening taste
  *
- * Takes Spotify top artists/tracks from two time ranges and classifies
+ * Takes top artists from two time ranges and classifies
  * each artist into: rising, consistent, or fading.
+ *
+ * Works with both Spotify and Last.fm artist shapes via normalized input.
  */
 
 /**
  * Compare short-term vs long-term top artists to find taste shifts.
  *
- * @param {Array} shortTermArtists - Spotify top artists (short_term ~4 weeks)
- * @param {Array} longTermArtists - Spotify top artists (long_term ~several years)
+ * Each artist object should have at minimum: { name, image (url string|null) }
+ * Optional fields: genres (array), id (string)
+ *
+ * @param {Array} shortTermArtists - Top artists from recent period
+ * @param {Array} longTermArtists - Top artists from all-time/long period
  * @param {Array|null} historyEntries - Optional uploaded history entries for deeper context
  * @returns {{ rising: Array, consistent: Array, fading: Array }}
  */
 export function compareTaste(shortTermArtists, longTermArtists, historyEntries = null) {
-  const shortSet = new Map(shortTermArtists.map((a, i) => [a.id, { ...a, rank: i + 1 }]))
-  const longSet = new Map(longTermArtists.map((a, i) => [a.id, { ...a, rank: i + 1 }]))
+  const shortSet = new Map(shortTermArtists.map((a, i) => [a.name.toLowerCase(), { ...a, rank: i + 1 }]))
+  const longSet = new Map(longTermArtists.map((a, i) => [a.name.toLowerCase(), { ...a, rank: i + 1 }]))
 
-  const rising = []   // In short-term but NOT in long-term (new obsessions)
-  const consistent = [] // In both (enduring favorites)
-  const fading = []   // In long-term but NOT in short-term (falling off)
+  const rising = []
+  const consistent = []
+  const fading = []
 
-  // Find rising + consistent
-  for (const [id, artist] of shortSet) {
-    if (longSet.has(id)) {
-      const longRank = longSet.get(id).rank
+  for (const [key, artist] of shortSet) {
+    if (longSet.has(key)) {
+      const longRank = longSet.get(key).rank
       consistent.push({
-        id,
+        id: artist.name,
         name: artist.name,
-        image: artist.images?.[0]?.url || null,
-        genres: artist.genres?.slice(0, 2) || [],
+        image: artist.image || null,
+        genres: artist.genres || [],
         shortRank: artist.rank,
         longRank,
-        rankDelta: longRank - artist.rank, // Positive = moving up
+        rankDelta: longRank - artist.rank,
       })
     } else {
       rising.push({
-        id,
+        id: artist.name,
         name: artist.name,
-        image: artist.images?.[0]?.url || null,
-        genres: artist.genres?.slice(0, 2) || [],
+        image: artist.image || null,
+        genres: artist.genres || [],
         shortRank: artist.rank,
       })
     }
   }
 
-  // Find fading
-  for (const [id, artist] of longSet) {
-    if (!shortSet.has(id)) {
+  for (const [key, artist] of longSet) {
+    if (!shortSet.has(key)) {
       fading.push({
-        id,
+        id: artist.name,
         name: artist.name,
-        image: artist.images?.[0]?.url || null,
-        genres: artist.genres?.slice(0, 2) || [],
+        image: artist.image || null,
+        genres: artist.genres || [],
         longRank: artist.rank,
       })
     }
   }
 
-  // Enrich with history data if available
   if (historyEntries && historyEntries.length > 0) {
     const playCounts = getArtistPlayCounts(historyEntries)
-
     for (const list of [rising, consistent, fading]) {
       for (const artist of list) {
         artist.totalHistoryPlays = playCounts.get(artist.name.toLowerCase()) || 0
@@ -69,7 +70,6 @@ export function compareTaste(shortTermArtists, longTermArtists, historyEntries =
     }
   }
 
-  // Sort: rising by short rank, consistent by rank delta (biggest climbers first), fading by long rank
   rising.sort((a, b) => a.shortRank - b.shortRank)
   consistent.sort((a, b) => b.rankDelta - a.rankDelta)
   fading.sort((a, b) => a.longRank - b.longRank)
@@ -81,9 +81,6 @@ export function compareTaste(shortTermArtists, longTermArtists, historyEntries =
   }
 }
 
-/**
- * Build a map of artist name (lowercase) → total play count from history entries
- */
 function getArtistPlayCounts(entries) {
   const counts = new Map()
   for (const entry of entries) {
