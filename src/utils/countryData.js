@@ -121,9 +121,10 @@ export const COUNTRY_DATA = {
   VE: { lat: 6.4,   lng: -66.6,  name: 'Venezuela' },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Asia — East (6 countries)
+  // Asia — East (7 entries)
   // ─────────────────────────────────────────────────────────────────────────
   CN: { lat: 35.9,  lng: 104.2,  name: 'China' },
+  HK: { lat: 22.3,  lng: 114.2,  name: 'Hong Kong' },
   JP: { lat: 36.2,  lng: 138.3,  name: 'Japan' },
   MN: { lat: 46.9,  lng: 103.8,  name: 'Mongolia' },
   KP: { lat: 40.3,  lng: 127.5,  name: 'North Korea' },

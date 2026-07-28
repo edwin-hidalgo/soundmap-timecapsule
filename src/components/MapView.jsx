@@ -44,6 +44,12 @@ export default function MapView({
   const [mapLoaded, setMapLoaded] = useState(false)
   const [geoBannerDismissed, setGeoBannerDismissed] = useState(false)
 
+  // Idle auto-spin state (refs so listeners see current values without re-binding)
+  const userInteractingRef = useRef(false)
+  const resumeTimerRef = useRef(null)
+  const panelOpenRef = useRef(false)
+  panelOpenRef.current = !!selectedCountry
+
   // Compute max listening time for marker sizing
   const maxMs = Math.max(...Object.values(countryData).map((c) => c.totalMsPlayed), 0)
 
@@ -66,30 +72,95 @@ export default function MapView({
     countryTrackCandidates.map(t => ({ name: t.name, artist: t.artist }))
   )
 
+  // Up to 3 resolved cover URLs per country, rank order (for marker art cycling)
   const countryImageMap = useMemo(() => {
     const map = {}
     for (const t of countryTrackCandidates) {
-      if (map[t.code]) continue
       const key = `${t.artist || ''}:${t.name}`.toLowerCase()
-      if (topTrackImages[key]) {
-        map[t.code] = topTrackImages[key]
-      }
+      const url = topTrackImages[key]
+      if (!url) continue
+      if (!map[t.code]) map[t.code] = []
+      map[t.code].push(url)
     }
     return map
   }, [countryTrackCandidates, topTrackImages])
 
-  // Auto-fit bounds after map loads
+  // ─── Idle auto-spin ────────────────────────────────────────────────────
+  // Slow continuous rotation; pauses on interaction or open panel,
+  // resumes after IDLE_RESUME_MS of inactivity.
+  const SECONDS_PER_REV = 30
+  const MAX_SPIN_ZOOM = 4
+  const IDLE_RESUME_MS = 10_000
+
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return
+    const map = mapRef.current.getMap()
 
-    const lngs = Object.values(countryData).map((c) => c.lng)
-    const lats = Object.values(countryData).map((c) => c.lat)
-    const bounds = [
-      [Math.min(...lngs), Math.min(...lats)],
-      [Math.max(...lngs), Math.max(...lats)],
-    ]
-    mapRef.current.fitBounds(bounds, { padding: 80, duration: 1200 })
-  }, [mapLoaded, countryData])
+    function spinGlobe() {
+      if (userInteractingRef.current || panelOpenRef.current) return
+      if (map.getZoom() >= MAX_SPIN_ZOOM) return
+      const center = map.getCenter()
+      center.lng -= 360 / SECONDS_PER_REV // one second worth of rotation
+      map.easeTo({ center, duration: 1000, easing: (n) => n })
+    }
+
+    function scheduleResume() {
+      clearTimeout(resumeTimerRef.current)
+      resumeTimerRef.current = setTimeout(() => {
+        userInteractingRef.current = false
+        spinGlobe()
+      }, IDLE_RESUME_MS)
+    }
+
+    function onInteractionStart() {
+      userInteractingRef.current = true
+      clearTimeout(resumeTimerRef.current)
+    }
+
+    function onInteractionEnd() {
+      scheduleResume()
+    }
+
+    // wheel has no matching end event — treat each tick as start + reschedule
+    function onWheel() {
+      userInteractingRef.current = true
+      scheduleResume()
+    }
+
+    map.on('mousedown', onInteractionStart)
+    map.on('touchstart', onInteractionStart)
+    map.on('wheel', onWheel)
+    map.on('mouseup', onInteractionEnd)
+    map.on('touchend', onInteractionEnd)
+    map.on('dragend', onInteractionEnd)
+    map.on('moveend', spinGlobe) // chain: each 1s ease triggers the next
+
+    spinGlobe()
+
+    return () => {
+      clearTimeout(resumeTimerRef.current)
+      map.off('mousedown', onInteractionStart)
+      map.off('touchstart', onInteractionStart)
+      map.off('wheel', onWheel)
+      map.off('mouseup', onInteractionEnd)
+      map.off('touchend', onInteractionEnd)
+      map.off('dragend', onInteractionEnd)
+      map.off('moveend', spinGlobe)
+    }
+  }, [mapLoaded])
+
+  // When the country panel closes: after the idle delay, glide back out to
+  // globe view — the moveend chain then resumes the spin on its own.
+  useEffect(() => {
+    if (selectedCountry || !mapLoaded || !mapRef.current) return
+    const map = mapRef.current.getMap()
+    clearTimeout(resumeTimerRef.current)
+    resumeTimerRef.current = setTimeout(() => {
+      userInteractingRef.current = false
+      map.easeTo({ zoom: 1.7, duration: 2500 })
+    }, IDLE_RESUME_MS)
+    return () => clearTimeout(resumeTimerRef.current)
+  }, [selectedCountry, mapLoaded])
 
   function handleMarkerClick(code) {
     const country = countryData[code]
@@ -115,26 +186,37 @@ export default function MapView({
         reuseMaps
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/dark-v11"
-        initialViewState={{ longitude: 0, latitude: 20, zoom: 1.5 }}
+        projection="globe"
+        fog={{
+          color: 'rgb(11, 11, 25)',
+          'high-color': 'rgb(36, 42, 84)',
+          'horizon-blend': 0.02,
+          'space-color': 'rgb(5, 5, 15)',
+          'star-intensity': 0.4,
+        }}
+        initialViewState={{ longitude: -30, latitude: 20, zoom: 1.7 }}
         onLoad={() => setMapLoaded(true)}
         style={{ width: '100%', height: '100%' }}
       >
-        {Object.values(countryData).map((country) => (
-          <Marker
-            key={country.code}
-            longitude={country.lng}
-            latitude={country.lat}
-            anchor="center"
-          >
-            <CountryMarker
-              country={country}
-              size={markerSize(country.totalMsPlayed, maxMs)}
-              isSelected={selectedCountry?.code === country.code}
-              onClick={handleMarkerClick}
-              topTrackImage={countryImageMap[country.code]}
-            />
-          </Marker>
-        ))}
+        {Object.values(countryData)
+          .filter((country) => country.code !== 'ZZ' && country.code !== 'A1')
+          .map((country, index) => (
+            <Marker
+              key={country.code}
+              longitude={country.lng}
+              latitude={country.lat}
+              anchor="center"
+            >
+              <CountryMarker
+                country={country}
+                size={markerSize(country.totalMsPlayed, maxMs)}
+                isSelected={selectedCountry?.code === country.code}
+                onClick={handleMarkerClick}
+                images={countryImageMap[country.code] || []}
+                index={index}
+              />
+            </Marker>
+          ))}
       </Map>
 
       <StatsBar

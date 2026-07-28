@@ -1,12 +1,46 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-export default function CountryMarker({ country, size, isSelected, onClick, topTrackImage }) {
+/**
+ * CountryMarker — pulsing marker on the globe
+ *
+ * Props:
+ *   country: CountryStats
+ *   size: px diameter (from markerSize)
+ *   isSelected: boolean
+ *   onClick(code)
+ *   images: string[] — up to 3 album cover URLs (rank order); cycles when > 1
+ *   index: number — stagger order for entrance pop-in
+ */
+export default function CountryMarker({ country, size, isSelected, onClick, images = [], index = 0 }) {
   const [hovered, setHovered] = useState(false)
-  const showImage = !!topTrackImage
+  const [imgIndex, setImgIndex] = useState(0)
+  const showImage = images.length > 0
+  const currentImage = showImage ? images[imgIndex % images.length] : null
+
+  // Cycle through covers on an offset timer so markers don't blink in lockstep
+  useEffect(() => {
+    if (images.length < 2) return
+    const offset = (country.code.charCodeAt(0) * 37 + country.code.charCodeAt(1) * 13) % 3000
+    let interval
+    const timeout = setTimeout(() => {
+      setImgIndex((i) => i + 1)
+      interval = setInterval(() => setImgIndex((i) => i + 1), 6000)
+    }, 6000 + offset)
+    return () => {
+      clearTimeout(timeout)
+      clearInterval(interval)
+    }
+  }, [images.length, country.code])
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <motion.div
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 18, delay: index * 0.05 }}
+      className="relative"
+      style={{ width: size, height: size }}
+    >
       {/* Pulse ring */}
       <motion.div
         animate={{ scale: [1, 2, 1], opacity: [0.6, 0, 0.6] }}
@@ -40,9 +74,20 @@ export default function CountryMarker({ country, size, isSelected, onClick, topT
             : '0 0 8px rgba(245, 166, 35, 0.2)',
         }}
       >
-        {showImage && (
-          <img src={topTrackImage} alt={country.name} className="w-full h-full object-cover" />
-        )}
+        <AnimatePresence>
+          {currentImage && (
+            <motion.img
+              key={currentImage}
+              src={currentImage}
+              alt={country.name}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Tooltip */}
@@ -60,6 +105,6 @@ export default function CountryMarker({ country, size, isSelected, onClick, topT
           </div>
         </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }
