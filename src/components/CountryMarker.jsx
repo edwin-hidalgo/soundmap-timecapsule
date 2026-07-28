@@ -11,8 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion'
  *   onClick(code)
  *   images: string[] — up to 3 album cover URLs (rank order); cycles when > 1
  *   index: number — stagger order for entrance pop-in
+ *   cinemaMode: boolean — locks cycle interval to 5s so cover loops (5s×2=10s,
+ *     5s×3=15s) divide the 30s globe revolution exactly (seamless GIF loop)
  */
-export default function CountryMarker({ country, size, isSelected, onClick, images = [], index = 0 }) {
+export default function CountryMarker({ country, size, isSelected, onClick, images = [], index = 0, cinemaMode = false }) {
   const [hovered, setHovered] = useState(false)
   const [imgIndex, setImgIndex] = useState(0)
   const showImage = images.length > 0
@@ -21,17 +23,18 @@ export default function CountryMarker({ country, size, isSelected, onClick, imag
   // Cycle through covers on an offset timer so markers don't blink in lockstep
   useEffect(() => {
     if (images.length < 2) return
+    const CYCLE_MS = cinemaMode ? 5000 : 6000
     const offset = (country.code.charCodeAt(0) * 37 + country.code.charCodeAt(1) * 13) % 3000
     let interval
     const timeout = setTimeout(() => {
       setImgIndex((i) => i + 1)
-      interval = setInterval(() => setImgIndex((i) => i + 1), 6000)
-    }, 6000 + offset)
+      interval = setInterval(() => setImgIndex((i) => i + 1), CYCLE_MS)
+    }, CYCLE_MS + offset)
     return () => {
       clearTimeout(timeout)
       clearInterval(interval)
     }
-  }, [images.length, country.code])
+  }, [images.length, country.code, cinemaMode])
 
   return (
     <motion.div

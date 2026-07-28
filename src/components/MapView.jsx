@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Map, { Marker } from 'react-map-gl'
 import CountryMarker from './CountryMarker.jsx'
+import CinemaStarfield from './CinemaStarfield.jsx'
 import CapsulePanel from './CapsulePanel.jsx'
 import StatsBar from './StatsBar.jsx'
 import NowPlayingCard from './NowPlayingCard.jsx'
@@ -9,6 +10,11 @@ import { markerSize } from '../utils/formatters.js'
 import { useTrackImages } from '../utils/artistImages.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+
+// Cinema mode (?cinema=1): recording-only view — ambient starfield, hidden UI
+// chrome, and loop-locked animation timing for a seamless one-revolution GIF.
+const CINEMA_MODE =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('cinema')
 
 /**
  * MapView — Screen 2: Interactive world map with country markers
@@ -100,7 +106,7 @@ export default function MapView({
       if (userInteractingRef.current || panelOpenRef.current) return
       if (map.getZoom() >= MAX_SPIN_ZOOM) return
       const center = map.getCenter()
-      center.lng -= 360 / SECONDS_PER_REV // one second worth of rotation
+      center.lng += 360 / SECONDS_PER_REV // one second worth of rotation (west→east)
       map.easeTo({ center, duration: 1000, easing: (n) => n })
     }
 
@@ -214,24 +220,29 @@ export default function MapView({
                 onClick={handleMarkerClick}
                 images={countryImageMap[country.code] || []}
                 index={index}
+                cinemaMode={CINEMA_MODE}
               />
             </Marker>
           ))}
       </Map>
 
-      <StatsBar
-        countryData={countryData}
-        onReset={onReset}
-        onNavigateToTimeline={onNavigateToTimeline}
-        onNavigateToActivity={onNavigateToActivity}
-        onNavigateToBroadcast={onNavigateToBroadcast}
-        onNavigateToTasteSnapshot={onNavigateToTasteSnapshot}
-        onNavigateToExploration={onNavigateToExploration}
-        spotifyUser={spotifyUser}
-        lastfmUser={lastfmUser}
-      />
+      {CINEMA_MODE && <CinemaStarfield />}
 
-      {dataFormat === 'basic' && !geoBannerDismissed && (
+      {!CINEMA_MODE && (
+        <StatsBar
+          countryData={countryData}
+          onReset={onReset}
+          onNavigateToTimeline={onNavigateToTimeline}
+          onNavigateToActivity={onNavigateToActivity}
+          onNavigateToBroadcast={onNavigateToBroadcast}
+          onNavigateToTasteSnapshot={onNavigateToTasteSnapshot}
+          onNavigateToExploration={onNavigateToExploration}
+          spotifyUser={spotifyUser}
+          lastfmUser={lastfmUser}
+        />
+      )}
+
+      {!CINEMA_MODE && dataFormat === 'basic' && !geoBannerDismissed && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 w-full max-w-lg px-4">
           <div className="flex items-start gap-3 p-3 bg-bg-primary/95 backdrop-blur border border-accent/20 rounded text-xs text-text-secondary shadow-lg">
             <span className="text-accent flex-shrink-0 mt-0.5">◈</span>
@@ -250,7 +261,7 @@ export default function MapView({
         </div>
       )}
 
-      {(spotifyToken || lastfmUser) && (
+      {!CINEMA_MODE && (spotifyToken || lastfmUser) && (
         <NowPlayingCard spotifyToken={spotifyToken} lastfmUser={lastfmUser} />
       )}
 
