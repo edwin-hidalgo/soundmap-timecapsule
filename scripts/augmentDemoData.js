@@ -113,6 +113,48 @@ const EXTRA_COUNTRIES = [
     ['Supalonely', 'BENEE', 'STELLA & STEVE', 10],
     ['Don’t Forget Your Roots', 'Six60', 'Six60', 6],
   ]},
+  // Northern / Central Asia
+  { code: 'RU', dates: ['2021-08-04', '2021-08-14'], tracks: [
+    ['All The Things She Said', 't.A.T.u.', '200 KM/H In The Wrong Lane', 14],
+    ['Skibidi (Romantic Edition)', 'Little Big', 'Skibidi', 10],
+    ['Gruppa krovi', 'Kino', 'Gruppa krovi', 7],
+  ]},
+  { code: 'KZ', dates: ['2021-08-15', '2021-08-22'], tracks: [
+    ['Roses (Imanbek Remix)', 'SAINt JHN', 'Roses (Imanbek Remix)', 13],
+    ['SOS d’un terrien en détresse', 'Dimash Kudaibergen', 'iD', 8],
+    ['Adai', 'Imanbek', 'Adai', 5],
+  ]},
+  { code: 'MN', dates: ['2021-08-23', '2021-08-29'], tracks: [
+    ['Wolf Totem', 'The HU', 'The Gereg', 11],
+    ['Yuve Yuve Yu', 'The HU', 'The Gereg', 8],
+    ['Sad But True', 'The HU', 'Rumble of Thunder', 5],
+  ]},
+  { code: 'UA', dates: ['2021-09-01', '2021-09-08'], tracks: [
+    ['SHUM', 'Go_A', 'SHUM', 10],
+    ['Obiymy', 'Okean Elzy', 'Zemlya', 7],
+    ['Stefania (Kalush Orchestra)', 'KALUSH', 'Stefania (Kalush Orchestra)', 5],
+  ]},
+  // Africa — East & West additions
+  { code: 'SN', dates: ['2024-10-09', '2024-10-15'], tracks: [
+    ['7 Seconds (feat. Neneh Cherry)', 'Youssou N’Dour', 'The Guide (Wommat)', 12],
+    ['Birima', 'Youssou N’Dour', 'Joko', 7],
+    ['African Woman', 'Baaba Maal', 'Being', 4],
+  ]},
+  { code: 'KE', dates: ['2024-10-16', '2024-10-22'], tracks: [
+    ['Suzanna', 'Sauti Sol', 'Midnight Train', 11],
+    ['Sura Yako', 'Sauti Sol', 'Live and Die in Afrika', 8],
+    ['Sipangwingwi', 'Ssaru', 'Sipangwingwi', 4],
+  ]},
+  { code: 'GH', dates: ['2024-10-23', '2024-10-29'], tracks: [
+    ['SAD GIRLZ LUV MONEY', 'Amaarae', 'THE ANGEL YOU DON’T KNOW', 13],
+    ['Adonai', 'Sarkodie', 'Sarkology', 8],
+    ['Forever', 'Gyakie', 'Seed', 5],
+  ]},
+  { code: 'TZ', dates: ['2024-10-30', '2024-11-05'], tracks: [
+    ['Jeje', 'Diamond Platnumz', 'First Of All', 12],
+    ['Tetema', 'Rayvanny', 'Tetema', 8],
+    ['Kwa Ngwaru', 'Harmonize', 'Kwa Ngwaru', 5],
+  ]},
   // Asia / Mideast
   { code: 'IN', dates: ['2025-05-03', '2025-05-14'], tracks: [
     ['Jai Ho', 'A.R. Rahman', 'Slumdog Millionaire', 13],
