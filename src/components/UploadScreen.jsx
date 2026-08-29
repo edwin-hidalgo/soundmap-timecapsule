@@ -354,9 +354,14 @@ export default function UploadScreen({
         {/* Title & Subtitle */}
         <div className="text-center">
           <p className="font-mono text-xs text-accent/60 uppercase tracking-widest mb-2 sm:mb-3">// ARCHIVE_v1.0</p>
-          <h1 className="text-3xl sm:text-5xl text-text-primary mb-1 sm:mb-2" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-            My Music Memory
-          </h1>
+          <h1 className="sr-only">My Music Memory</h1>
+          <img
+            src="/wordmark.png"
+            alt=""
+            aria-hidden="true"
+            className="w-64 sm:w-80 mx-auto mb-1 sm:mb-2 select-none pointer-events-none"
+            style={{ mixBlendMode: 'screen' }}
+          />
           <p className="font-mono text-xs sm:text-sm text-text-secondary uppercase tracking-wide">
             Explore your historic music taste
           </p>
