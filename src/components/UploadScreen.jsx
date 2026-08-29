@@ -360,7 +360,6 @@ export default function UploadScreen({
             alt=""
             aria-hidden="true"
             className="w-64 sm:w-80 mx-auto mb-1 sm:mb-2 select-none pointer-events-none"
-            style={{ mixBlendMode: 'screen' }}
           />
           <p className="font-mono text-xs sm:text-sm text-text-secondary uppercase tracking-wide">
             Explore your historic music taste

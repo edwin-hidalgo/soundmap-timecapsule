@@ -60,7 +60,6 @@ export default function HubScreen({
             src="/wordmark.png"
             alt="My Music Memory"
             className="w-44 mx-auto mb-4 select-none pointer-events-none"
-            style={{ mixBlendMode: 'screen' }}
           />
           <h1 className="text-3xl sm:text-4xl text-text-primary mb-2" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             Welcome{displayName ? `, ${displayName.split(' ')[0]}` : ''}
